@@ -19,33 +19,35 @@ func NewAuthHandler(auth services.AuthService) (AuthHandler, error) {
 }
 
 func (h AuthHandler) LogIn(w http.ResponseWriter, r *http.Request) {
-	req := &struct {
-		Username string
-		Password string
-	}{}
-	err := readReq(req, r, w)
-	if err != nil {
-		return
-	}
+    req := &struct {
+        Username string
+        Password string
+    }{}
+    err := readReq(req, r, w)
+    if err != nil {
+        return
+    }
 
-	log.Println("Primljen zahtev za login")
+    log.Println("Recived login request")
 
-	token, err := h.auth.LogIn(req.Username, req.Password)
-	if err != nil {
-		log.Println("Greška u login funkciji:", err)
-		writeErrorResp(err, w)
-		return
-	}
-	log.Println("Token generisan:", token)
+    token, err := h.auth.LogIn(req.Username, req.Password)
+    if err != nil {
+        log.Printf("Error in login func %s: %v", req.Username, err)
+        writeErrorResp(err, w)
+        return
+    }
+	
+    
+    log.Println("Token genereted:", token)
 
-
-	resp := struct {
-		Token string
-	}{
-		Token: token,
-	}
-	writeResp(resp, http.StatusOK, w)
+    resp := struct {
+        Token string
+    }{
+        Token: token,
+    }
+    writeResp(resp, http.StatusOK, w)
 }
+
 
 type AuthMiddleware struct {
 	auth services.AuthService

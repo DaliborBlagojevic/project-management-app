@@ -13,7 +13,7 @@ func NewAuthService(users domain.UserRepository) (AuthService, error) {
 }
 
 func (s AuthService) LogIn(username, password string) (token string, err error) {
-	users, err := s.users.GetAll()
+	users, err := s.users.GetByUsername(username)
 	if err != nil {
 		return
 	}
@@ -27,7 +27,7 @@ func (s AuthService) LogIn(username, password string) (token string, err error) 
 	return
 }
 
-func (s AuthService) ResolveUser(token string) (authenticated domain.User, err error) {
+func (s AuthService) ResolveUser(token string) (authenticated *domain.User, err error) {
 	users, err := s.users.GetAll()
 	if err != nil {
 		return

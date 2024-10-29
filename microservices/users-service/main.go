@@ -1,53 +1,95 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	"project-management-app/microservices/users-service/handlers"
 	"project-management-app/microservices/users-service/repositories"
 	"project-management-app/microservices/users-service/services"
-	"project-management-app/microservices/users-service/handlers"
 	"github.com/gorilla/mux"
 )
 
 func main() {
+	// Set up a timeout context
+	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	userRepository, err := repositories.NewUserInMem()
+	// Initialize logger
+	storeLogger := log.New(os.Stdout, "[user-store] ", log.LstdFlags)
+
+	// Initialize user repository
+	userRepository, err := repositories.New(timeoutContext, storeLogger)
 	handleErr(err)
 
+	// Initialize user service
 	userService, err := services.NewUserService(userRepository)
 	handleErr(err)
+
+	// Initialize user handler
+	userHandler, err := handlers.NewUserHandler(userService)
+	handleErr(err)
+
 	authService, err := services.NewAuthService(userRepository)
 	handleErr(err)
 
-	userHandler, err := handlers.NewUserHandler(userService)
-	handleErr(err)
-	authHandler, err := handlers.NewAuthHandler(authService)
+	AuthHandler, err := handlers.NewAuthHandler(authService)
 	handleErr(err)
 
-	authMiddleware, err := handlers.NewAuthMiddleware(authService)
-	handleErr(err)
-
-
-
-	r := mux.NewRouter()
-
-	// Pod-ruter za rute koje ne zahtevaju autentifikaciju
-	publicRoutes := r.PathPrefix("/").Subrouter()
-	publicRoutes.HandleFunc("/users", userHandler.Create).Methods("POST")
-	publicRoutes.HandleFunc("/auth", authHandler.LogIn).Methods("POST")
-
-	protectedRoutes := r.PathPrefix("/").Subrouter()
 	
-	// Dodaj autentifikacioni middleware samo na zaštićene rute
-	protectedRoutes.Use(authMiddleware.Handle)
 
-	srv := &http.Server{
-		Handler: r,
-		Addr:    ":8003",
+	// Set up the router
+	router := mux.NewRouter()
+
+	// Public routes
+	publicRoutes := router.PathPrefix("/").Subrouter()
+	publicRoutes.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
+	publicRoutes.HandleFunc("/auth", AuthHandler.LogIn).Methods(http.MethodPost)
+
+
+	// Set up the server
+	port := os.Getenv("PORT")
+	if len(port) == 0 {
+		port = "8080"
 	}
-	log.Fatal(srv.ListenAndServe())
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      router,
+		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  1 * time.Second,
+		WriteTimeout: 1 * time.Second,
+	}
+
+	// Start the server in a goroutine
+	go func() {
+		log.Println("Server listening on port", port)
+		if err := server.ListenAndServe(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// Set up signal handling for graceful shutdown
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, os.Kill)
+
+	// Wait for shutdown signal
+	sig := <-sigCh
+	log.Println("Received terminate, graceful shutdown", sig)
+
+	// Shutdown the server gracefully
+	ctx, cancelShutdown := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelShutdown()
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatal("Cannot gracefully shutdown:", err)
+	}
+	log.Println("Server stopped")
 }
 
+// handleErr is a helper function for error handling
 func handleErr(err error) {
 	if err != nil {
 		log.Fatalln(err)

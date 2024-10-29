@@ -23,13 +23,14 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Name string
 		Surname string
 		Email string
+		Role  string
 	}{}
 	err := readReq(req, r, w)
 	if err != nil {
 		return
 	}
 
-	user, err := h.users.Create(req.Username, req.Password, req.Name, req.Surname, req.Email)
+	user, err := h.users.Create(req.Username, req.Password, req.Name, req.Surname, req.Email, req.Role)
 	if err != nil {
 		writeErrorResp(err, w)
 		return

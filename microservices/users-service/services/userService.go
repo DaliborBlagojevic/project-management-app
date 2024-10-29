@@ -16,15 +16,20 @@ func NewUserService(users domain.UserRepository) (UserService, error) {
 	}, nil
 }
 
-func (s UserService) Create(username, password, name, surname,email string) (domain.User, error) {
-	user := domain.User{
-			Username: username,
-			Password: password,
-			Name: name,
-			Surname: surname,
-			Email: email,
+func (s UserService) Create(username, password, name, surname, email, roleString string) (domain.User, error) {
+	role, err := domain.RoleFromString(roleString) // Poziv funkcije iz paketa domain
+	if err != nil {
+		return domain.User{}, err
 	}
-	return s.users.Create(user)
+	user := domain.User{
+		Username: username,
+		Password: password,
+		Name:     name,
+		Surname:  surname,
+		Email:    email,
+		Role:     role,
+	}
+	return s.users.Insert(user)
 }
 
 func (s UserService) LogIn(username, password string) (token string, err error) {
