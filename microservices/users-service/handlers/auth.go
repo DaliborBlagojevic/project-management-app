@@ -1,9 +1,8 @@
 package handlers
 
-
 import (
-	"log"
 	"context"
+	"log"
 	"net/http"
 	"project-management-app/microservices/users-service/services"
 )
@@ -47,6 +46,8 @@ func (h AuthHandler) LogIn(w http.ResponseWriter, r *http.Request) {
     }
     writeResp(resp, http.StatusOK, w)
 }
+
+
 
 
 type AuthMiddleware struct {

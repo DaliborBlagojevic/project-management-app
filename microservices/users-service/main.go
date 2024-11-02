@@ -51,6 +51,7 @@ func main() {
 	publicRoutes.HandleFunc("/auth", AuthHandler.LogIn).Methods(http.MethodPost)
 
 
+
 	// Set up the server
 	port := os.Getenv("PORT")
 	if len(port) == 0 {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 
-	
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -17,6 +16,7 @@ type User struct {
 	Surname 		string			`bson:"surname,omitempty" json:"surname"`	
 	Email 			string			`bson:"email" json:"email"`
 	Role 			Role			`bson:"role" json:"role"`
+	IsActive		bool			`bson:"isActive" json:"isActive"`
 }
 
 type Users []*User
@@ -67,11 +67,11 @@ func (r Role) EnumIndex() int {
 // Definiši kao funkciju paketa, a ne kao metodu Role
 func RoleFromString(s string) (Role, error) {
 	switch s {
-	case "1":
+	case "Unauthorized user":
 		return UNAUTHORIZED_USER, nil
-	case "2":
+	case "Project manager":
 		return PROJECT_MANAGER, nil
-	case "3":
+	case "Project member":
 		return PROJECT_MEMBER, nil
 	default:
 		return 0, errors.New("invalid role")

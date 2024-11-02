@@ -1,6 +1,9 @@
 package services
 
-import "project-management-app/microservices/users-service/domain"
+import (
+
+	"project-management-app/microservices/users-service/domain"
+)
 
 type AuthService struct {
 	users domain.UserRepository
@@ -11,6 +14,8 @@ func NewAuthService(users domain.UserRepository) (AuthService, error) {
 		users: users,
 	}, nil
 }
+
+
 
 func (s AuthService) LogIn(username, password string) (token string, err error) {
 	users, err := s.users.GetByUsername(username)
