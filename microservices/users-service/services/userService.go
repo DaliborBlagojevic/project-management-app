@@ -46,3 +46,4 @@ func (s UserService) LogIn(username, password string) (token string, err error) 
 	err = domain.ErrInvalidCredentials()
 	return
 }
+

@@ -1,16 +1,20 @@
 package handlers
 
 import (
+
 	"log"
 	"net/http"
 	"net/smtp"
+	"project-management-app/microservices/users-service/repositories"
 	"project-management-app/microservices/users-service/services"
-
 
 )
 
+type KeyProduct struct{}
+
 type UserHandler struct {
 	users services.UserService
+	repo repositories.UserRepo
 }
 
 func NewUserHandler(users services.UserService) (UserHandler, error) {

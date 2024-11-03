@@ -142,3 +142,27 @@ func (ur *UserRepo) Insert(user domain.User) (domain.User, error) {
 	ur.logger.Printf("Documents ID: %v\n", result.InsertedID)
 	return user, nil
 }
+
+
+
+func (pr *UserRepo) ActivateAccount(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+    usersCollection := pr.getCollection()
+	
+	objID, _ := primitive.ObjectIDFromHex(id)
+	filter := bson.M{"_id": objID}
+	update := bson.M{"$set": bson.M{
+			"isActive": 1,
+			
+		}}
+	result, err := usersCollection.UpdateOne(ctx, filter, update)
+	pr.logger.Printf("Documents matched: %v\n", result.MatchedCount)
+	pr.logger.Printf("Documents updated: %v\n", result.ModifiedCount)
+
+	if err != nil {
+		pr.logger.Println(err)
+		return err
+	}
+	return nil
+}

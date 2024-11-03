@@ -11,6 +11,8 @@ import (
 	"project-management-app/microservices/users-service/handlers"
 	"project-management-app/microservices/users-service/repositories"
 	"project-management-app/microservices/users-service/services"
+
+	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -47,8 +49,15 @@ func main() {
 
 	// Public routes
 	publicRoutes := router.PathPrefix("/").Subrouter()
+
 	publicRoutes.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
 	publicRoutes.HandleFunc("/auth", AuthHandler.LogIn).Methods(http.MethodPost)
+	cors := gorillaHandlers.CORS(
+		gorillaHandlers.AllowedOrigins([]string{"*"}),
+		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+		gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
+	)
+	
 
 
 
@@ -59,7 +68,7 @@ func main() {
 	}
 	server := &http.Server{
 		Addr:         ":" + port,
-		Handler:      router,
+		Handler:      cors(router),
 		IdleTimeout:  120 * time.Second,
 		ReadTimeout:  1 * time.Second,
 		WriteTimeout: 1 * time.Second,
