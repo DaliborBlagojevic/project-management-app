@@ -47,14 +47,19 @@ func main() {
 	// Set up the router
 	router := mux.NewRouter()
 
-	// Public routes
-	publicRoutes := router.PathPrefix("/").Subrouter()
+	
+	router.Use(userHandler.MiddlewareContentTypeSet)
 
-	publicRoutes.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
-	publicRoutes.HandleFunc("/auth", AuthHandler.LogIn).Methods(http.MethodPost)
+	patchRouter := router.Methods(http.MethodPatch).Subrouter()
+	patchRouter.HandleFunc("/auth/{id}", userHandler.PatchUser)
+	patchRouter.Use(userHandler.MiddlewareUserDeserialization)
+
+	router.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
+	router.HandleFunc("/auth", AuthHandler.LogIn).Methods(http.MethodPost)
+	
 	cors := gorillaHandlers.CORS(
 		gorillaHandlers.AllowedOrigins([]string{"*"}),
-		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
 		gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
 	)
 	

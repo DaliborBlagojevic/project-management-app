@@ -49,6 +49,8 @@ type UserRepository interface {
 	// Update(user User) error
 }
 
+
+
 type Role int
 
 const (

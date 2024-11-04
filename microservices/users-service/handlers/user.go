@@ -1,13 +1,15 @@
 package handlers
 
 import (
-
+	"context"
 	"log"
 	"net/http"
 	"net/smtp"
+	"project-management-app/microservices/users-service/domain"
 	"project-management-app/microservices/users-service/repositories"
 	"project-management-app/microservices/users-service/services"
 
+	"github.com/gorilla/mux"
 )
 
 type KeyProduct struct{}
@@ -61,7 +63,74 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeResp(resp, http.StatusCreated, w)
 
 	// Call the email function to send an email after successful user creation
-	h.email(req.Email, "Dragan car", "localhost:8080/users/verify")
+	h.email(req.Email, "", "")
+}
+
+func (p *UserHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
+		log.Println("Method [", h.Method, "] - Hit path :", h.URL.Path)
+
+		rw.Header().Add("Content-Type", "application/json")
+
+		next.ServeHTTP(rw, h)
+	})
+}
+
+func (u *UserHandler) PatchUser(rw http.ResponseWriter, h *http.Request) {
+	// Log the start of the function
+	log.Println("PatchUser handler called")
+
+	vars := mux.Vars(h)
+	id := vars["id"]
+	log.Println("Extracted ID:", id)
+
+	// Retrieve user from context
+	user, ok := h.Context().Value(KeyProduct{}).(*domain.User)
+	if !ok {
+		log.Println("Failed to retrieve user from context")
+		http.Error(rw, "Invalid user data", http.StatusBadRequest)
+		return
+	}
+
+	log.Println("User retrieved from context:", user)
+
+	// Perform the account activation
+	err := u.repo.ActivateAccount(id, user)
+	if err != nil {
+		log.Println("Error activating account:", err)
+		http.Error(rw, "Error activating account", http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Account successfully activated for user:", user.Username)
+	rw.WriteHeader(http.StatusOK)
+}
+
+func (p *UserHandler) MiddlewareUserDeserialization(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
+		log.Println("MiddlewareUserDeserialization started")
+
+		user := &domain.User{}
+		err := user.FromJSON(h.Body)
+
+		// Check for errors during JSON decoding
+		if err != nil {
+			log.Println("Error decoding user JSON:", err)
+			http.Error(rw, "Unable to decode JSON", http.StatusBadRequest)
+			return
+		}
+
+		// Log the deserialized user
+		log.Println("Deserialized user:", user)
+
+		// Attach user to context
+		ctx := context.WithValue(h.Context(), KeyProduct{}, user)
+		h = h.WithContext(ctx)
+
+		log.Println("User added to context. Proceeding to next handler.")
+
+		next.ServeHTTP(rw, h)
+	})
 }
 
 

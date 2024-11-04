@@ -145,7 +145,7 @@ func (ur *UserRepo) Insert(user domain.User) (domain.User, error) {
 
 
 
-func (pr *UserRepo) ActivateAccount(id string) error {
+func (pr *UserRepo) ActivateAccount(id string, user *domain.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
     usersCollection := pr.getCollection()
