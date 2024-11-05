@@ -15,14 +15,13 @@ import (
 type KeyProduct struct{}
 
 type UserHandler struct {
-	users services.UserService
-	repo repositories.UserRepo
+	users *services.UserService
+	repo *repositories.UserRepo
 }
 
-func NewUserHandler(users services.UserService) (UserHandler, error) {
-	return UserHandler{
-		users: users,
-	}, nil
+
+func NewUserHandler(s *services.UserService, r *repositories.UserRepo) *UserHandler {
+	return &UserHandler{s, r}
 }
 
 func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +51,8 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Name     string
 		Surname  string
 		Email    string
+		Role 	string
+		IsActive bool
 	}{
 		Id:       user.Id.String(),
 		Username: user.Username,
@@ -59,11 +60,41 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Name:     user.Name,
 		Surname:  user.Surname,
 		Email:    user.Email,
+		Role: 		user.Role.String(),
+		IsActive: user.IsActive,
 	}
 	writeResp(resp, http.StatusCreated, w)
 
+	
+
+
+
+	verifyLink := "http://localhost:5173/login"
+	log.Println(verifyLink)
 	// Call the email function to send an email after successful user creation
-	h.email(req.Email, "", "")
+	h.email(req.Email, "", verifyLink)
+}
+
+func (p *UserHandler) GetPatientsByName(rw http.ResponseWriter, h *http.Request) {
+	
+	vars := mux.Vars(h)
+	username := vars["username"]
+	
+	users, err := p.repo.GetByUsername(username)
+	if err != nil {
+		log.Print("Database exception: ", err)
+	}
+
+	if users == nil {
+		return
+	}
+
+	err = users.ToJSON(rw)
+	if err != nil {
+		http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
+		log.Fatal("Unable to convert to json :", err)
+		return
+	}
 }
 
 func (p *UserHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {
@@ -81,7 +112,7 @@ func (u *UserHandler) PatchUser(rw http.ResponseWriter, h *http.Request) {
 	log.Println("PatchUser handler called")
 
 	vars := mux.Vars(h)
-	id := vars["id"]
+	id := vars["username"]
 	log.Println("Extracted ID:", id)
 
 	// Retrieve user from context
@@ -102,6 +133,8 @@ func (u *UserHandler) PatchUser(rw http.ResponseWriter, h *http.Request) {
 		return
 	}
 
+	
+
 	log.Println("Account successfully activated for user:", user.Username)
 	rw.WriteHeader(http.StatusOK)
 }
@@ -111,15 +144,16 @@ func (p *UserHandler) MiddlewareUserDeserialization(next http.Handler) http.Hand
 		log.Println("MiddlewareUserDeserialization started")
 
 		user := &domain.User{}
+		log.Println(user, "user")
 		err := user.FromJSON(h.Body)
+		log.Println(err, "error")
 
 		// Check for errors during JSON decoding
 		if err != nil {
-			log.Println("Error decoding user JSON:", err)
 			http.Error(rw, "Unable to decode JSON", http.StatusBadRequest)
 			return
 		}
-
+ 
 		// Log the deserialized user
 		log.Println("Deserialized user:", user)
 

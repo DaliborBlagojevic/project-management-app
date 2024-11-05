@@ -1,49 +1,64 @@
 package services
 
 import (
+	"fmt"
 	"project-management-app/microservices/users-service/domain"
+	"project-management-app/microservices/users-service/repositories"
+
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type UserService struct {
 
-	users domain.UserRepository
+	users *repositories.UserRepo
 
 }
 
-func NewUserService(users domain.UserRepository) (UserService, error) {
-	return UserService{
-		users: users,
-	}, nil
+
+
+func NewUserService( r *repositories.UserRepo) *UserService {
+	return &UserService{r}
 }
+
+
 
 func (s UserService) Create(username, password, name, surname, email, roleString string) (domain.User, error) {
-	role, err := domain.RoleFromString(roleString) // Poziv funkcije iz paketa domain
-	if err != nil {
-		return domain.User{}, err
-	}
-	user := domain.User{
-		Username: username,
-		Password: password,
-		Name:     name,
-		Surname:  surname,
-		Email:    email,
-		Role:     role,
-	}
-	return s.users.Insert(user)
+    role, err := domain.RoleFromString(roleString)
+    if err != nil {
+        return domain.User{}, err
+    }
+
+    // Proveri da li postoji korisnik sa istim username-om
+    existingUser, err := s.users.GetByUsername(username)
+    if err != nil && err != mongo.ErrNoDocuments { // mongo.ErrNoDocuments znači da korisnik ne postoji
+        return domain.User{}, err
+    }
+    if existingUser != nil {
+        return domain.User{}, fmt.Errorf("user with username '%s' already exists", username)
+    }
+
+    // Proveri da li postoji korisnik sa istim email-om
+    existingUser, err = s.users.GetByEmail(email)
+    if err != nil && err != mongo.ErrNoDocuments {
+        return domain.User{}, err
+    }
+    if existingUser != nil {
+        return domain.User{}, fmt.Errorf("user with email '%s' already exists", email)
+    }
+
+    // Kreiraj novog korisnika
+    user := domain.User{
+        Username: username,
+        Password: password,
+        Name:     name,
+        Surname:  surname,
+        Email:    email,
+        Role:     role,
+    }
+
+    return s.users.Insert(user)
 }
 
-func (s UserService) LogIn(username, password string) (token string, err error) {
-	users, err := s.users.GetAll()
-	if err != nil {
-		return
-	}
-	for _, user := range users {
-		if user.Username == username && user.Password == password {
-			token = user.Id.String()
-			return
-		}
-	}
-	err = domain.ErrInvalidCredentials()
-	return
-}
+
+
 

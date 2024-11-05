@@ -68,6 +68,12 @@ func (pr *UserRepo) Ping() {
 	fmt.Println(databases)
 }
 
+func (ur *UserRepo) getCollection() *mongo.Collection {
+	userDatabase := ur.cli.Database("mongoDemo")
+    usersCollection := userDatabase.Collection("users")
+	return usersCollection
+}
+
 func (ur *UserRepo) GetAll() (domain.Users, error) {
 	// Initialise context (after 5 seconds timeout, abort operation)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -77,6 +83,45 @@ func (ur *UserRepo) GetAll() (domain.Users, error) {
 
 	var users domain.Users
 	usersCursor, err := usersCollection.Find(ctx, bson.M{})
+	if err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+	if err = usersCursor.All(ctx, &users); err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+	return users, nil
+}
+
+
+
+func (ur *UserRepo) GetById(id string) (*domain.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+    usersCollection := ur.getCollection()
+
+	var user domain.User
+	objID, _ := primitive.ObjectIDFromHex(id)
+	err := usersCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&user)
+	if err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+	return &user, nil
+}
+
+
+
+func (ur *UserRepo) GetByEmail(email string) (domain.Users, error) {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    usersCollection := ur.getCollection()
+
+    var users domain.Users
+	usersCursor, err := usersCollection.Find(ctx, bson.M{"username": email})
 	if err != nil {
 		ur.logger.Println(err)
 		return nil, err
@@ -105,28 +150,6 @@ func (ur *UserRepo) GetByUsername(username string) (domain.Users, error) {
 		return nil, err
 	}
 	return users, nil
-}
-
-func (ur *UserRepo) GetById(id string) (*domain.User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-    usersCollection := ur.getCollection()
-
-	var user domain.User
-	objID, _ := primitive.ObjectIDFromHex(id)
-	err := usersCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&user)
-	if err != nil {
-		ur.logger.Println(err)
-		return nil, err
-	}
-	return &user, nil
-}
-
-func (ur *UserRepo) getCollection() *mongo.Collection {
-	userDatabase := ur.cli.Database("mongoDemo")
-    usersCollection := userDatabase.Collection("users")
-	return usersCollection
 }
 
 func (ur *UserRepo) Insert(user domain.User) (domain.User, error) {

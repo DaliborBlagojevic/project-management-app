@@ -10,13 +10,13 @@ import (
 
 type User struct {
 	Id          	primitive.ObjectID		`bson:"_id,omitempty" json:"id"`
-	Username 		string			`bson:"username" json:"username"`
-	Password 		string			`bson:"password" json:"password"`	
-	Name        	string			`bson:"name" json:"name"`
+	Username 		string			`bson:"username,omitempty" json:"username"`
+	Password 		string			`bson:"password,omitempty" json:"password"`	
+	Name        	string			`bson:"name,omitempty" json:"name"`
 	Surname 		string			`bson:"surname,omitempty" json:"surname"`	
-	Email 			string			`bson:"email" json:"email"`
-	Role 			Role			`bson:"role" json:"role"`
-	IsActive		bool			`bson:"isActive" json:"isActive"`
+	Email 			string			`bson:"email,omitempty" json:"email"`
+	Role 			Role			`bson:"role,omitempty" json:"role"`
+	IsActive		bool			`bson:"isActive,omitempty" json:"isActive"`
 }
 
 type Users []*User
@@ -36,19 +36,9 @@ func (p *User) FromJSON(r io.Reader) error {
 	return d.Decode(p)
 }
 
-
 func (u User) Equals(user User) bool {
 	return u.Id == user.Id
 }
-
-type UserRepository interface {
-	GetById(id string) (*User, error)
-	GetByUsername(username string) (Users, error)
-	GetAll() (Users, error)
-	Insert(user User) (User, error)
-	// Update(user User) error
-}
-
 
 
 type Role int
@@ -59,8 +49,9 @@ const (
 	PROJECT_MEMBER Role = iota + 3
 )
 
+
 func (r Role) String() string {
-	return[...]string{"Unauthorized user", "Project manager", "Project member"}[r-1]
+	return[...]string{"Unauthorized user", "Project manager", "Project member"}[r]
 }
 func (r Role) EnumIndex() int {
 	return int(r)

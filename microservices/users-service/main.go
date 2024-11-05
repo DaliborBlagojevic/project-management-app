@@ -29,18 +29,17 @@ func main() {
 	handleErr(err)
 
 	// Initialize user service
-	userService, err := services.NewUserService(userRepository)
-	handleErr(err)
+	userService  := services.NewUserService(userRepository)
+
 
 	// Initialize user handler
-	userHandler, err := handlers.NewUserHandler(userService)
-	handleErr(err)
+	userHandler := handlers.NewUserHandler(userService, userRepository)
+	
 
-	authService, err := services.NewAuthService(userRepository)
-	handleErr(err)
+	authService := services.NewAuthService(userRepository)
 
-	AuthHandler, err := handlers.NewAuthHandler(authService)
-	handleErr(err)
+	AuthHandler := handlers.NewAuthHandler(authService)
+
 
 	
 
@@ -49,6 +48,9 @@ func main() {
 
 	
 	router.Use(userHandler.MiddlewareContentTypeSet)
+
+	getRouter := router.Methods(http.MethodGet).Subrouter()
+	getRouter.HandleFunc("/users/{username}", userHandler.GetPatientsByName)
 
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
 	patchRouter.HandleFunc("/auth/{id}", userHandler.PatchUser)
