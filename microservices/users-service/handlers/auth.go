@@ -7,14 +7,15 @@ import (
 	"project-management-app/microservices/users-service/services"
 )
 
+
+
 type AuthHandler struct {
-	auth services.AuthService
+	auth *services.AuthService
 }
 
-func NewAuthHandler(auth services.AuthService) (AuthHandler, error) {
-	return AuthHandler{
-		auth: auth,
-	}, nil
+
+func NewAuthHandler(s *services.AuthService) *AuthHandler {
+	return &AuthHandler{s}
 }
 
 func (h AuthHandler) LogIn(w http.ResponseWriter, r *http.Request) {

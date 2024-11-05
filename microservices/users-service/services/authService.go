@@ -1,19 +1,24 @@
 package services
 
 import (
-
 	"project-management-app/microservices/users-service/domain"
+	"project-management-app/microservices/users-service/repositories"
 )
 
+
+
 type AuthService struct {
-	users domain.UserRepository
+
+	users *repositories.UserRepo
+
 }
 
-func NewAuthService(users domain.UserRepository) (AuthService, error) {
-	return AuthService{
-		users: users,
-	}, nil
+
+
+func NewAuthService( r *repositories.UserRepo) *AuthService {
+	return &AuthService{r}
 }
+
 
 
 
