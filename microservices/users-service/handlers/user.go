@@ -85,9 +85,7 @@ func (p *UserHandler) GetPatientsByName(rw http.ResponseWriter, h *http.Request)
 		log.Print("Database exception: ", err)
 	}
 
-	if users == nil {
-		return
-	}
+
 
 	err = users.ToJSON(rw)
 	if err != nil {

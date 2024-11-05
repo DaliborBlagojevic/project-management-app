@@ -1,6 +1,10 @@
 package services
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"project-management-app/microservices/projects-service/domain"
 	"time"
 
@@ -17,18 +21,14 @@ func NewProjectService(projects domain.ProjectRepository) (ProjectService, error
 	}, nil
 }
 
-func (s ProjectService) Create(managerId string, name string, endDate string, minWorkers int, maxWorkers int) (domain.Project, error) {
-	managerIDHex := "64b4d5b2d4a1b3c2d5f7e8a9"
+func (s ProjectService) Create(managerUsername string, name string, endDate string, minWorkers int, maxWorkers int) (domain.Project, error) {
 
-	managerID, err := primitive.ObjectIDFromHex(managerIDHex)
+	var manager domain.User
+
+	manager, err := s.GetUser(managerUsername)
 	if err != nil {
 		return domain.Project{}, err
 	}
-
-	manager := domain.User{
-		Id: managerID,
-	}
-
 	parsedEndDate, err := time.Parse("2006-01-02", endDate)
 	if err != nil {
 		return domain.Project{}, err
@@ -45,4 +45,31 @@ func (s ProjectService) Create(managerId string, name string, endDate string, mi
 	}
 
 	return s.projects.Insert(project)
+}
+
+func (s *ProjectService) GetUser(username string) (domain.User, error) {
+
+	url := fmt.Sprintf("http://user-server:8080/users/%s", username)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return domain.User{}, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	var users []domain.User
+	if err := json.Unmarshal(body, &users); err != nil {
+		return domain.User{}, fmt.Errorf("failed to decode user list: %v", err)
+	}
+
+	if len(users) == 0 {
+		return domain.User{}, fmt.Errorf("no user found")
+	}
+
+	return users[0], nil
 }

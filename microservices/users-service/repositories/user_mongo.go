@@ -16,11 +16,9 @@ import (
 )
 
 type UserRepo struct {
-	cli *mongo.Client
+	cli    *mongo.Client
 	logger *log.Logger
 }
-
-
 
 func New(ctx context.Context, logger *log.Logger) (*UserRepo, error) {
 	dburi := os.Getenv("MONGO_DB_URI")
@@ -36,7 +34,7 @@ func New(ctx context.Context, logger *log.Logger) (*UserRepo, error) {
 	}
 
 	return &UserRepo{
-		cli: client,
+		cli:    client,
 		logger: logger,
 	}, nil
 }
@@ -70,7 +68,7 @@ func (pr *UserRepo) Ping() {
 
 func (ur *UserRepo) getCollection() *mongo.Collection {
 	userDatabase := ur.cli.Database("mongoDemo")
-    usersCollection := userDatabase.Collection("users")
+	usersCollection := userDatabase.Collection("users")
 	return usersCollection
 }
 
@@ -79,7 +77,7 @@ func (ur *UserRepo) GetAll() (domain.Users, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-    usersCollection := ur.getCollection()
+	usersCollection := ur.getCollection()
 
 	var users domain.Users
 	usersCursor, err := usersCollection.Find(ctx, bson.M{})
@@ -94,13 +92,11 @@ func (ur *UserRepo) GetAll() (domain.Users, error) {
 	return users, nil
 }
 
-
-
 func (ur *UserRepo) GetById(id string) (*domain.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-    usersCollection := ur.getCollection()
+	usersCollection := ur.getCollection()
 
 	var user domain.User
 	objID, _ := primitive.ObjectIDFromHex(id)
@@ -112,15 +108,13 @@ func (ur *UserRepo) GetById(id string) (*domain.User, error) {
 	return &user, nil
 }
 
-
-
 func (ur *UserRepo) GetByEmail(email string) (domain.Users, error) {
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-    usersCollection := ur.getCollection()
+	usersCollection := ur.getCollection()
 
-    var users domain.Users
+	var users domain.Users
 	usersCursor, err := usersCollection.Find(ctx, bson.M{"username": email})
 	if err != nil {
 		ur.logger.Println(err)
@@ -137,7 +131,7 @@ func (ur *UserRepo) GetByUsername(username string) (domain.Users, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-    usersCollection := ur.getCollection()
+	usersCollection := ur.getCollection()
 
 	var users domain.Users
 	usersCursor, err := usersCollection.Find(ctx, bson.M{"username": username})
@@ -155,7 +149,7 @@ func (ur *UserRepo) GetByUsername(username string) (domain.Users, error) {
 func (ur *UserRepo) Insert(user domain.User) (domain.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-    usersCollection := ur.getCollection()
+	usersCollection := ur.getCollection()
 
 	result, err := usersCollection.InsertOne(ctx, &user)
 	if err != nil {
@@ -166,19 +160,16 @@ func (ur *UserRepo) Insert(user domain.User) (domain.User, error) {
 	return user, nil
 }
 
-
-
 func (pr *UserRepo) ActivateAccount(id string, user *domain.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-    usersCollection := pr.getCollection()
-	
+	usersCollection := pr.getCollection()
+
 	objID, _ := primitive.ObjectIDFromHex(id)
 	filter := bson.M{"_id": objID}
 	update := bson.M{"$set": bson.M{
-			"isActive": 1,
-			
-		}}
+		"isActive": 1,
+	}}
 	result, err := usersCollection.UpdateOne(ctx, filter, update)
 	pr.logger.Printf("Documents matched: %v\n", result.MatchedCount)
 	pr.logger.Printf("Documents updated: %v\n", result.ModifiedCount)

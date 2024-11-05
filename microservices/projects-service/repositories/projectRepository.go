@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"project-management-app/microservices/projects-service/dao"
 	"project-management-app/microservices/projects-service/domain"
-	"project-management-app/microservices/projects-service/dto"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -132,7 +132,7 @@ func (ur *ProjectRepo) Insert(project domain.Project) (domain.Project, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	projectDto := dto.NewProjectDto(project)
+	projectDto := dao.NewProjectDao(project)
 
 	projectsCollection := ur.getCollection()
 	result, err := projectsCollection.InsertOne(ctx, &projectDto)

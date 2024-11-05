@@ -1,4 +1,4 @@
-package dto
+package dao
 
 import (
 	"project-management-app/microservices/projects-service/domain"
@@ -8,8 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type ProjectDto struct {
-	Id         primitive.ObjectID `json:"id"`
+type ProjectDao struct {
 	Manager    primitive.ObjectID `json:"manager"`
 	Name       string             `json:"name"`
 	EndDate    string             `json:"end_date"`
@@ -17,35 +16,33 @@ type ProjectDto struct {
 	MaxWorkers string             `json:"max_workers"`
 }
 
-func (dto *ProjectDto) ToDomain() (domain.Project, error) {
-	endDate, err := time.Parse("2006-01-02", dto.EndDate)
+func (dao *ProjectDao) ToDomain() (domain.Project, error) {
+	endDate, err := time.Parse("2006-01-02", dao.EndDate)
 	if err != nil {
 		return domain.Project{}, err
 	}
 
-	minWorkers, err := strconv.Atoi(dto.MinWorkers)
+	minWorkers, err := strconv.Atoi(dao.MinWorkers)
 	if err != nil {
 		return domain.Project{}, err
 	}
 
-	maxWorkers, err := strconv.Atoi(dto.MaxWorkers)
+	maxWorkers, err := strconv.Atoi(dao.MaxWorkers)
 	if err != nil {
 		return domain.Project{}, err
 	}
 
 	return domain.Project{
-		Id:         dto.Id,
-		Manager:    domain.User{Id: dto.Manager},
-		Name:       dto.Name,
+		Manager:    domain.User{Id: dao.Manager},
+		Name:       dao.Name,
 		EndDate:    endDate,
 		MinWorkers: minWorkers,
 		MaxWorkers: maxWorkers,
 	}, nil
 }
 
-func NewProjectDto(project domain.Project) ProjectDto {
-	return ProjectDto{
-		Id:         project.Id,
+func NewProjectDao(project domain.Project) ProjectDao {
+	return ProjectDao{
 		Manager:    project.Manager.Id,
 		Name:       project.Name,
 		EndDate:    project.EndDate.Format("2006-01-02"),

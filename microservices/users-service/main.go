@@ -29,24 +29,14 @@ func main() {
 	handleErr(err)
 
 	// Initialize user service
-	userService  := services.NewUserService(userRepository)
-
+	userService := services.NewUserService(userRepository)
 
 	// Initialize user handler
 	userHandler := handlers.NewUserHandler(userService, userRepository)
-	
-
-	authService := services.NewAuthService(userRepository)
-
-	AuthHandler := handlers.NewAuthHandler(authService)
-
-
-	
 
 	// Set up the router
 	router := mux.NewRouter()
 
-	
 	router.Use(userHandler.MiddlewareContentTypeSet)
 
 	getRouter := router.Methods(http.MethodGet).Subrouter()
@@ -57,16 +47,12 @@ func main() {
 	patchRouter.Use(userHandler.MiddlewareUserDeserialization)
 
 	router.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
-	router.HandleFunc("/auth", AuthHandler.LogIn).Methods(http.MethodPost)
-	
+
 	cors := gorillaHandlers.CORS(
 		gorillaHandlers.AllowedOrigins([]string{"*"}),
 		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
 		gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
 	)
-	
-
-
 
 	// Set up the server
 	port := os.Getenv("PORT")

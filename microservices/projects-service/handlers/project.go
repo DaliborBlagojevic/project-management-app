@@ -23,18 +23,18 @@ func NewprojectHandler(projects services.ProjectService) (ProjectHandler, error)
 func (h ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	req := &struct {
-		ManagerId  string
-		Name       string
-		EndDate    string
-		MinWorkers int
-		MaxWorkers int
+		ManagerUsername string
+		Name            string
+		EndDate         string
+		MinWorkers      int
+		MaxWorkers      int
 	}{}
 	err := readReq(req, r, w)
 	if err != nil {
 		return
 	}
 
-	project, err := h.projects.Create(req.ManagerId, req.Name, req.EndDate, req.MinWorkers, req.MaxWorkers)
+	project, err := h.projects.Create(req.ManagerUsername, req.Name, req.EndDate, req.MinWorkers, req.MaxWorkers)
 	if err != nil {
 		writeErrorResp(err, w)
 		return
