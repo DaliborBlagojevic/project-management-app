@@ -47,6 +47,14 @@ func (s ProjectService) Create(managerUsername string, name string, endDate stri
 	return s.projects.Insert(project)
 }
 
+func (s ProjectService) GetAll() (domain.Projects, error) {
+	projects, err := s.projects.GetAll()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching projects: %v", err)
+	}
+	return projects, nil
+}
+
 func (s *ProjectService) GetUser(username string) (domain.User, error) {
 
 	url := fmt.Sprintf("http://user-server:8080/users/%s", username)

@@ -16,9 +16,8 @@ type KeyProduct struct{}
 
 type UserHandler struct {
 	users *services.UserService
-	repo *repositories.UserRepo
+	repo  *repositories.UserRepo
 }
-
 
 func NewUserHandler(s *services.UserService, r *repositories.UserRepo) *UserHandler {
 	return &UserHandler{s, r}
@@ -51,7 +50,7 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Name     string
 		Surname  string
 		Email    string
-		Role 	string
+		Role     string
 		IsActive bool
 	}{
 		Id:       user.Id.String(),
@@ -60,14 +59,10 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Name:     user.Name,
 		Surname:  user.Surname,
 		Email:    user.Email,
-		Role: 		user.Role.String(),
+		Role:     user.Role.String(),
 		IsActive: user.IsActive,
 	}
 	writeResp(resp, http.StatusCreated, w)
-
-	
-
-
 
 	verifyLink := "http://localhost:5173/login"
 	log.Println(verifyLink)
@@ -76,18 +71,34 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *UserHandler) GetPatientsByName(rw http.ResponseWriter, h *http.Request) {
-	
+
 	vars := mux.Vars(h)
 	username := vars["username"]
-	
+
 	users, err := p.repo.GetByUsername(username)
 	if err != nil {
 		log.Print("Database exception: ", err)
 	}
 
-
-
 	err = users.ToJSON(rw)
+	if err != nil {
+		http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
+		log.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
+func (p *UserHandler) GetUserById(rw http.ResponseWriter, h *http.Request) {
+
+	vars := mux.Vars(h)
+	id := vars["id"]
+
+	user, err := p.repo.GetById(id)
+	if err != nil {
+		log.Print("Database exception: ", err)
+	}
+
+	err = user.ToJSON(rw)
 	if err != nil {
 		http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
 		log.Fatal("Unable to convert to json :", err)
@@ -131,8 +142,6 @@ func (u *UserHandler) PatchUser(rw http.ResponseWriter, h *http.Request) {
 		return
 	}
 
-	
-
 	log.Println("Account successfully activated for user:", user.Username)
 	rw.WriteHeader(http.StatusOK)
 }
@@ -151,7 +160,7 @@ func (p *UserHandler) MiddlewareUserDeserialization(next http.Handler) http.Hand
 			http.Error(rw, "Unable to decode JSON", http.StatusBadRequest)
 			return
 		}
- 
+
 		// Log the deserialized user
 		log.Println("Deserialized user:", user)
 
@@ -164,7 +173,6 @@ func (p *UserHandler) MiddlewareUserDeserialization(next http.Handler) http.Hand
 		next.ServeHTTP(rw, h)
 	})
 }
-
 
 func (h UserHandler) email(email, body, verifyLink string) {
 	from := "dalibor.blagojevic1000@gmail.com"
@@ -200,6 +208,3 @@ func (h UserHandler) email(email, body, verifyLink string) {
 	}
 	log.Println("Successfully sent email to " + to)
 }
-
-
-

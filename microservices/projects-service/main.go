@@ -12,6 +12,7 @@ import (
 	"project-management-app/microservices/projects-service/repositories"
 	"project-management-app/microservices/projects-service/services"
 
+	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -42,15 +43,26 @@ func main() {
 	// getRouter.HandleFunc("/users", userHandler.GetAllUsers) // Primer rute za dohvat svih korisnika (ako je potrebno)
 
 	// POST subrouter
+	getRouter := router.Methods(http.MethodGet).Subrouter()
 	postRouter := router.Methods(http.MethodPost).Subrouter()
-	// Dodajemo POST rute ovde
-	postRouter.HandleFunc("/projects", projectHandler.Create)
+
+	// GET ruta za dohvat svih projekata
+	getRouter.HandleFunc("/projects", projectHandler.GetAll).Methods("GET")
+
+	// POST ruta za kreiranje novog projekta
+	postRouter.HandleFunc("/projects", projectHandler.Create).Methods("POST")
 
 	// PATCH subrouter
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
 
 	// Middleware za deserializaciju korisničkih podataka, primenjen samo na PATCH i POST rute gde je potrebno
 	patchRouter.Use(projectHandler.ProjectContextMiddleware)
+
+	cors := gorillaHandlers.CORS(
+		gorillaHandlers.AllowedOrigins([]string{"*"}),
+		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
+		gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
+	)
 
 	// Set up the server
 	port := os.Getenv("PORT")
@@ -59,7 +71,7 @@ func main() {
 	}
 	server := &http.Server{
 		Addr:         ":" + port,
-		Handler:      router,
+		Handler:      cors(router),
 		IdleTimeout:  120 * time.Second,
 		ReadTimeout:  1 * time.Second,
 		WriteTimeout: 1 * time.Second,

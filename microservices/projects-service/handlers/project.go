@@ -61,6 +61,49 @@ func (h ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (h ProjectHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	// Dohvatamo sve projekte koristeći ProjectService
+	projects, err := h.projects.GetAll()
+	if err != nil {
+		writeErrorResp(err, w)
+		return
+	}
+
+	// Pripremamo odgovor kao slice mapiranih struktura
+	resp := make([]struct {
+		Id              string `json:"id"`
+		ManagerId       string `json:"managerId"`
+		ManagerUsername string `json:"managerUsername"`
+		Name            string `json:"name"`
+		EndDate         string `json:"endDate"`
+		MinWorkers      int    `json:"minWorkers"`
+		MaxWorkers      int    `json:"maxWorkers"`
+	}, len(projects))
+
+	for i, project := range projects {
+		resp[i] = struct {
+			Id              string `json:"id"`
+			ManagerId       string `json:"managerId"`
+			ManagerUsername string `json:"managerUsername"`
+			Name            string `json:"name"`
+			EndDate         string `json:"endDate"`
+			MinWorkers      int    `json:"minWorkers"`
+			MaxWorkers      int    `json:"maxWorkers"`
+		}{
+			Id:              project.Id.Hex(),
+			ManagerId:       project.Manager.Id.Hex(),
+			ManagerUsername: project.Manager.Username,
+			Name:            project.Name,
+			EndDate:         project.EndDate.Format("2006-01-02"),
+			MinWorkers:      project.MinWorkers,
+			MaxWorkers:      project.MaxWorkers,
+		}
+	}
+
+	// Šaljemo odgovor kao JSON sa statusom 200 OK
+	writeResp(resp, http.StatusOK, w)
+}
+
 func (u *ProjectHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
 

@@ -41,6 +41,7 @@ func main() {
 
 	getRouter := router.Methods(http.MethodGet).Subrouter()
 	getRouter.HandleFunc("/users/{username}", userHandler.GetPatientsByName)
+	getRouter.HandleFunc("/users/id/{id}", userHandler.GetUserById)
 
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
 	patchRouter.HandleFunc("/auth/{id}", userHandler.PatchUser)
