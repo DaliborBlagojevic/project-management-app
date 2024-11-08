@@ -34,11 +34,13 @@ func main() {
 	// Initialize user handler
 	userHandler := handlers.NewUserHandler(userService, userRepository)
 
+	
+
 	// Set up the router
 	router := mux.NewRouter()
 
 	router.Use(userHandler.MiddlewareContentTypeSet)
-
+	
 	getRouter := router.Methods(http.MethodGet).Subrouter()
 	getRouter.HandleFunc("/users", userHandler.GetAll)
 	getRouter.HandleFunc("/users/{username}", userHandler.GetUserByUsername)
@@ -80,6 +82,8 @@ func main() {
 	// Set up signal handling for graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, os.Kill)
+
+	userService.PeriodicCleanup()
 
 	// Wait for shutdown signal
 	sig := <-sigCh

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"net/smtp"
@@ -37,7 +38,7 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Role     string
 		ActivationCode string
 	}{}
-	log.Println(req, "ovo je req")
+
 	err := readReq(req, r, w)
 	if err != nil {
 		http.Error(w, "Register error", http.StatusBadRequest)
@@ -45,11 +46,14 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.users.Create(req.Username, req.Password, req.Name, req.Surname, req.Email, req.Role, activationCode)
-	if err != nil {
-		http.Error(w, "Register error", http.StatusBadRequest)
-		writeErrorResp(err, w)
-		return
-	}
+    if err != nil {
+        if errors.Is(err, domain.ErrUserAlreadyExists()) {
+            http.Error(w, "User already exists", http.StatusConflict) // HTTP 409 Conflict
+        } else {
+            http.Error(w, "Error creating user", http.StatusInternalServerError)
+        }
+        return
+    }
 
 	
 	
@@ -76,12 +80,11 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ActivationCode: user.ActivationCode,
 	}
 	writeResp(resp, http.StatusCreated, w)
-	log.Println(resp, "ovo je resp")
 
 	verifyLink := "http://localhost:5173/activate/" + activationCode
 	log.Println(verifyLink)
-	// Call the email function to send an email after successful user creation
-	h.email(req.Email, "", verifyLink)
+
+	go h.email(req.Email, "", verifyLink)
 }
 
 func (p *UserHandler) GetUserByUsername(rw http.ResponseWriter, h *http.Request) {
@@ -164,6 +167,9 @@ func (u *UserHandler) PatchUser(rw http.ResponseWriter, h *http.Request) {
 	// Perform the account activation
 	err := u.repo.ActivateAccount(id, user)
 	if err != nil {
+		if errors.Is(err, domain.ErrCodeExpired()) {
+            http.Error(rw, err.Error(), http.StatusConflict) // HTTP 409 Conflict
+        }
 		log.Println("Error activating account:", err)
 		http.Error(rw, "Error activating account", http.StatusInternalServerError)
 		return
