@@ -47,7 +47,6 @@ func (pr *UserRepo) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-// Check database connection
 func (pr *UserRepo) Ping() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -108,6 +107,22 @@ func (ur *UserRepo) GetById(id string) (*domain.User, error) {
 	return &user, nil
 }
 
+func (ur *UserRepo) GetByUsername(username string) (*domain.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	usersCollection := ur.getCollection()
+
+	var user domain.User
+	
+	err := usersCollection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
+	if err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (ur *UserRepo) GetByEmail(email string) (domain.Users, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -127,7 +142,7 @@ func (ur *UserRepo) GetByEmail(email string) (domain.Users, error) {
 	return users, nil
 }
 
-func (ur *UserRepo) GetByUsername(username string) (domain.Users, error) {
+func (ur *UserRepo) GetAllByUsername(username string) (domain.Users, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -160,15 +175,15 @@ func (ur *UserRepo) Insert(user domain.User) (domain.User, error) {
 	return user, nil
 }
 
-func (pr *UserRepo) ActivateAccount(id string, user *domain.User) error {
+func (pr *UserRepo) ActivateAccount(uuid string, user *domain.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	usersCollection := pr.getCollection()
 
-	objID, _ := primitive.ObjectIDFromHex(id)
-	filter := bson.M{"_id": objID}
+	
+	filter := bson.M{"activationCode": uuid}
 	update := bson.M{"$set": bson.M{
-		"isActive": 1,
+		"isActive": true,
 	}}
 	result, err := usersCollection.UpdateOne(ctx, filter, update)
 	pr.logger.Printf("Documents matched: %v\n", result.MatchedCount)
@@ -180,3 +195,32 @@ func (pr *UserRepo) ActivateAccount(id string, user *domain.User) error {
 	}
 	return nil
 }
+
+func (ur *UserRepo) RemoveExpiredActivationCodes() error {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    usersCollection := ur.getCollection()
+
+    // Definiši vreme isteka (5 minuta)
+    expirationTime := time.Now().Add(-1 * time.Minute)
+
+    // Pronađi sve korisnike čiji je `CreatedAt` stariji od 5 minuta i koji nisu aktivirani
+    filter := bson.M{
+        "isActive":        false,
+        "createdAt":       bson.M{"$lt": expirationTime},
+        "activationCode": bson.M{"$ne": nil},
+    }
+
+    update := bson.M{
+        "$unset": bson.M{"activationCode": ""}, // Briši `activationCode`
+    }
+
+    _, err := usersCollection.UpdateMany(ctx, filter, update)
+    if err != nil {
+        return fmt.Errorf("failed to remove expired activation codes: %v", err)
+    }
+
+    return nil
+}
+

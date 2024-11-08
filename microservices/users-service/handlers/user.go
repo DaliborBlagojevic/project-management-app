@@ -9,6 +9,7 @@ import (
 	"project-management-app/microservices/users-service/repositories"
 	"project-management-app/microservices/users-service/services"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -24,6 +25,9 @@ func NewUserHandler(s *services.UserService, r *repositories.UserRepo) *UserHand
 }
 
 func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
+
+	activationCode := uuid.New().String()
+
 	req := &struct {
 		Username string
 		Password string
@@ -31,17 +35,24 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Surname  string
 		Email    string
 		Role     string
+		ActivationCode string
 	}{}
+	log.Println(req, "ovo je req")
 	err := readReq(req, r, w)
 	if err != nil {
+		http.Error(w, "Register error", http.StatusBadRequest)
 		return
 	}
 
-	user, err := h.users.Create(req.Username, req.Password, req.Name, req.Surname, req.Email, req.Role)
+	user, err := h.users.Create(req.Username, req.Password, req.Name, req.Surname, req.Email, req.Role, activationCode)
 	if err != nil {
+		http.Error(w, "Register error", http.StatusBadRequest)
 		writeErrorResp(err, w)
 		return
 	}
+
+	
+	
 
 	resp := struct {
 		Id       string
@@ -52,6 +63,7 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Email    string
 		Role     string
 		IsActive bool
+		ActivationCode string
 	}{
 		Id:       user.Id.String(),
 		Username: user.Username,
@@ -61,16 +73,18 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Email:    user.Email,
 		Role:     user.Role.String(),
 		IsActive: user.IsActive,
+		ActivationCode: user.ActivationCode,
 	}
 	writeResp(resp, http.StatusCreated, w)
+	log.Println(resp, "ovo je resp")
 
-	verifyLink := "http://localhost:5173/login"
+	verifyLink := "http://localhost:5173/activate/" + activationCode
 	log.Println(verifyLink)
 	// Call the email function to send an email after successful user creation
 	h.email(req.Email, "", verifyLink)
 }
 
-func (p *UserHandler) GetPatientsByName(rw http.ResponseWriter, h *http.Request) {
+func (p *UserHandler) GetUserByUsername(rw http.ResponseWriter, h *http.Request) {
 
 	vars := mux.Vars(h)
 	username := vars["username"]
@@ -86,6 +100,19 @@ func (p *UserHandler) GetPatientsByName(rw http.ResponseWriter, h *http.Request)
 		log.Fatal("Unable to convert to json :", err)
 		return
 	}
+}
+
+func (u *UserHandler) GetAll(rw http.ResponseWriter, h *http.Request) {
+    users, err := u.repo.GetAll()
+    if err != nil {
+        log.Print("Database exception: ", err)
+    }
+    err = users.ToJSON(rw)
+    if err != nil {
+        http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
+        log.Fatal("Unable to convert to json :", err)
+        return
+    }
 }
 
 func (p *UserHandler) GetUserById(rw http.ResponseWriter, h *http.Request) {
@@ -121,7 +148,7 @@ func (u *UserHandler) PatchUser(rw http.ResponseWriter, h *http.Request) {
 	log.Println("PatchUser handler called")
 
 	vars := mux.Vars(h)
-	id := vars["username"]
+	id := vars["uuid"]
 	log.Println("Extracted ID:", id)
 
 	// Retrieve user from context

@@ -2,9 +2,10 @@ package services
 
 import (
 	"fmt"
+	"log"
 	"project-management-app/microservices/users-service/domain"
 	"project-management-app/microservices/users-service/repositories"
-
+	"time"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -16,7 +17,7 @@ func NewUserService(r *repositories.UserRepo) *UserService {
 	return &UserService{r}
 }
 
-func (s UserService) Create(username, password, name, surname, email, roleString string) (domain.User, error) {
+func (s UserService) Create(username, password, name, surname, email, roleString, activationCode string) (domain.User, error) {
 	role, err := domain.RoleFromString(roleString)
 	if err != nil {
 		return domain.User{}, err
@@ -31,24 +32,38 @@ func (s UserService) Create(username, password, name, surname, email, roleString
 		return domain.User{}, fmt.Errorf("user with username '%s' already exists", username)
 	}
 
-	// Proveri da li postoji korisnik sa istim email-om
-	existingUser, err = s.users.GetByEmail(email)
-	if err != nil && err != mongo.ErrNoDocuments {
-		return domain.User{}, err
-	}
-	if existingUser != nil {
-		return domain.User{}, fmt.Errorf("user with email '%s' already exists", email)
-	}
-
 	// Kreiraj novog korisnika
 	user := domain.User{
-		Username: username,
-		Password: password,
-		Name:     name,
-		Surname:  surname,
-		Email:    email,
-		Role:     role,
+		Username:       username,
+		Password:       password,
+		Name:           name,
+		Surname:        surname,
+		Email:          email,
+		Role:           role,
+		IsActive:       false,
+		ActivationCode: activationCode,
+		CreatedAt:      time.Now(), 
 	}
+	log.Println(user, "u servisu")
 
 	return s.users.Insert(user)
 }
+
+
+func (s *UserService) PeriodicCleanup() {
+    ticker := time.NewTicker(2 * time.Minute) 
+    defer ticker.Stop()
+
+    for {
+        select {
+        case <-ticker.C:
+            err := s.users.RemoveExpiredActivationCodes()
+            if err != nil {
+                log.Printf("Error during cleanup: %v", err)
+            } else {
+                log.Println("Successfully removed expired activation codes.")
+            }
+        }
+    }
+}
+

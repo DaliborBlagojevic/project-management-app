@@ -23,7 +23,7 @@ func NewAuthService( r *repositories.UserRepo) *AuthService {
 
 
 func (s AuthService) LogIn(username, password string) (token string, err error) {
-	users, err := s.users.GetByUsername(username)
+	users, err := s.users.GetAllByUsername(username)
 	if err != nil {
 		return
 	}

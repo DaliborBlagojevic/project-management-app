@@ -4,20 +4,24 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type User struct {
-	Id          	primitive.ObjectID		`bson:"_id,omitempty" json:"id"`
-	Username 		string			`bson:"username,omitempty" json:"username"`
-	Password 		string			`bson:"password,omitempty" json:"password"`	
-	Name        	string			`bson:"name,omitempty" json:"name"`
-	Surname 		string			`bson:"surname,omitempty" json:"surname"`	
-	Email 			string			`bson:"email,omitempty" json:"email"`
-	Role 			Role			`bson:"role,omitempty" json:"role"`
-	IsActive		bool			`bson:"isActive,omitempty" json:"isActive"`
+    Id             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+    Username       string             `bson:"username" json:"username"`
+    Password       string             `bson:"password" json:"password"`
+    Name           string             `bson:"name" json:"name"`
+    Surname        string             `bson:"surname,omitempty" json:"surname"`
+    Email          string             `bson:"email" json:"email"`
+    Role           Role                `bson:"role" json:"role"`
+    IsActive       bool               `bson:"isActive" json:"isActive"`
+    ActivationCode string             `bson:"activationCode" json:"activationCode"`
+    CreatedAt      time.Time          `bson:"createdAt" json:"createdAt"` // Dodaj ovo
 }
+
 
 type Users []*User
 
@@ -51,7 +55,7 @@ const (
 
 
 func (r Role) String() string {
-	return[...]string{"Unauthorized user", "Project manager", "Project member"}[r]
+	return[...]string{"Unauthorized user", "Project manager", "Project member"}[r-1]
 }
 func (r Role) EnumIndex() int {
 	return int(r)

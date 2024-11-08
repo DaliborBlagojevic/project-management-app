@@ -40,11 +40,12 @@ func main() {
 	router.Use(userHandler.MiddlewareContentTypeSet)
 
 	getRouter := router.Methods(http.MethodGet).Subrouter()
-	getRouter.HandleFunc("/users/{username}", userHandler.GetPatientsByName)
+	getRouter.HandleFunc("/users", userHandler.GetAll)
+	getRouter.HandleFunc("/users/{username}", userHandler.GetUserByUsername)
 	getRouter.HandleFunc("/users/id/{id}", userHandler.GetUserById)
 
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
-	patchRouter.HandleFunc("/auth/{id}", userHandler.PatchUser)
+	patchRouter.HandleFunc("/users/{uuid}", userHandler.PatchUser)
 	patchRouter.Use(userHandler.MiddlewareUserDeserialization)
 
 	router.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
