@@ -65,19 +65,23 @@ func (s *ProjectService) GetUser(username string) (domain.User, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNotFound {
+		return domain.User{}, fmt.Errorf("user not found")
+	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return domain.User{}, err
 	}
 
-	var users []domain.User
-	if err := json.Unmarshal(body, &users); err != nil {
-		return domain.User{}, fmt.Errorf("failed to decode user list: %v", err)
+	var user domain.User
+	if err := json.Unmarshal(body, &user); err != nil {
+		return domain.User{}, fmt.Errorf("failed to decode user: %v", err)
 	}
 
-	if len(users) == 0 {
-		return domain.User{}, fmt.Errorf("no user found")
-	}
+	// if user == nil {
+	// 	return domain.User{}, fmt.Errorf("no user found")
+	// }
 
-	return users[0], nil
+	return user, nil
 }
