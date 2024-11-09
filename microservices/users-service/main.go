@@ -32,9 +32,10 @@ func main() {
 
 	// Initialize user service
 	userService := services.NewUserService(userRepository)
-
+	authService := services.NewAuthService(userRepository)
 	// Initialize user handler
 	userHandler := handlers.NewUserHandler(userService, userRepository)
+	authHandler := handlers.NewAuthHandler(authService)
 
 	// Set up the router
 	router := mux.NewRouter()
@@ -50,6 +51,7 @@ func main() {
 	patchRouter.Use(userHandler.MiddlewareUserDeserialization)
 
 	router.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
+	router.HandleFunc("/users/auth", authHandler.LogIn).Methods(http.MethodPost)
 
 	log.Println("Users service is running on", address)
 	log.Println("Routes are set up correctly")

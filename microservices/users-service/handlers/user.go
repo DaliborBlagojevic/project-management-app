@@ -30,12 +30,12 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	activationCode := uuid.New().String()
 
 	req := &struct {
-		Username       string
-		Password       string
-		Name           string
-		Surname        string
-		Email          string
-		Role           string
+		Username string
+		Password string
+		Name     string
+		Surname  string
+		Email    string
+		Role     string
 		ActivationCode string
 	}{}
 
@@ -55,25 +55,28 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+	
+	
+
 	resp := struct {
-		Id             string
-		Username       string
-		Password       string
-		Name           string
-		Surname        string
-		Email          string
-		Role           string
-		IsActive       bool
+		Id       string
+		Username string
+		Password string
+		Name     string
+		Surname  string
+		Email    string
+		Role     string
+		IsActive bool
 		ActivationCode string
 	}{
-		Id:             user.Id.String(),
-		Username:       user.Username,
-		Password:       user.Password,
-		Name:           user.Name,
-		Surname:        user.Surname,
-		Email:          user.Email,
-		Role:           user.Role.String(),
-		IsActive:       user.IsActive,
+		Id:       user.Id.String(),
+		Username: user.Username,
+		Password: user.Password,
+		Name:     user.Name,
+		Surname:  user.Surname,
+		Email:    user.Email,
+		Role:     user.Role.String(),
+		IsActive: user.IsActive,
 		ActivationCode: user.ActivationCode,
 	}
 	writeResp(resp, http.StatusCreated, w)
@@ -104,16 +107,16 @@ func (p *UserHandler) GetUserByUsername(rw http.ResponseWriter, h *http.Request)
 }
 
 func (u *UserHandler) GetAll(rw http.ResponseWriter, h *http.Request) {
-	users, err := u.repo.GetAll()
-	if err != nil {
-		log.Print("Database exception: ", err)
-	}
-	err = users.ToJSON(rw)
-	if err != nil {
-		http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
-		log.Fatal("Unable to convert to json :", err)
-		return
-	}
+    users, err := u.repo.GetAll()
+    if err != nil {
+        log.Print("Database exception: ", err)
+    }
+    err = users.ToJSON(rw)
+    if err != nil {
+        http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
+        log.Fatal("Unable to convert to json :", err)
+        return
+    }
 }
 
 func (p *UserHandler) GetUserById(rw http.ResponseWriter, h *http.Request) {
