@@ -37,20 +37,26 @@ func main() {
 
 	// Set up the router
 	router := mux.NewRouter()
-
 	router.Use(userHandler.MiddlewareContentTypeSet)
 
-	getRouter := router.Methods(http.MethodGet).Subrouter()
+	privateRouter := router.NewRoute().Subrouter()
+	privateRouter.Use(authHandler.MiddlewareAuth)
+
+	managerRouter := router.NewRoute().Subrouter()
+	managerRouter.Use(authHandler.MiddlewareAuthManager)
+
+	getRouter := privateRouter.Methods(http.MethodGet).Subrouter()
 	getRouter.HandleFunc("/users", userHandler.GetAll)
 	getRouter.HandleFunc("/users/{username}", userHandler.GetUserByUsername)
 	getRouter.HandleFunc("/users/id/{id}", userHandler.GetUserById)
 
-	patchRouter := router.Methods(http.MethodPatch).Subrouter()
+	patchRouter := privateRouter.Methods(http.MethodPatch).Subrouter()
 	patchRouter.HandleFunc("/users/{uuid}", userHandler.PatchUser)
 	patchRouter.Use(userHandler.MiddlewareUserDeserialization)
 
-	router.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
-	router.HandleFunc("/users/auth", authHandler.LogIn).Methods(http.MethodPost)
+	postRouter := router.Methods(http.MethodPost).Subrouter()
+	postRouter.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
+	postRouter.HandleFunc("/users/auth", authHandler.LogIn).Methods(http.MethodPost)
 
 	cors := gorillaHandlers.CORS(
 		gorillaHandlers.AllowedOrigins([]string{"*"}),
