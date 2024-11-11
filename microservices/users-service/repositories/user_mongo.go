@@ -20,7 +20,7 @@ type UserRepo struct {
 	logger *log.Logger
 }
 
-func New(ctx context.Context, logger *log.Logger) (*UserRepo, error) {
+func New(ctx context.Context, logger *log.Logger, ) (*UserRepo, error) {
 	dburi := os.Getenv("MONGO_DB_URI")
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(dburi))

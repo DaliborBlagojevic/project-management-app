@@ -12,11 +12,13 @@ import (
 	"project-management-app/microservices/users-service/repositories"
 	"project-management-app/microservices/users-service/services"
 
-	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
 func main() {
+	// Postavite adresu servera ručno
+	address := ":8000" // Zamenite port brojem koji vam odgovara
+
 	// Set up a timeout context
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -34,13 +36,10 @@ func main() {
 	// Initialize user handler
 	userHandler := handlers.NewUserHandler(userService, userRepository)
 
-	
-
 	// Set up the router
 	router := mux.NewRouter()
-
 	router.Use(userHandler.MiddlewareContentTypeSet)
-	
+
 	getRouter := router.Methods(http.MethodGet).Subrouter()
 	getRouter.HandleFunc("/users", userHandler.GetAll)
 	getRouter.HandleFunc("/users/{username}", userHandler.GetUserByUsername)
@@ -52,38 +51,28 @@ func main() {
 
 	router.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
 
-	cors := gorillaHandlers.CORS(
-		gorillaHandlers.AllowedOrigins([]string{"*"}),
-		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
-		gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
-	)
+	log.Println("Users service is running on", address)
+	log.Println("Routes are set up correctly")
 
 	// Set up the server
-	port := os.Getenv("PORT")
-	if len(port) == 0 {
-		port = "8080"
-	}
 	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      cors(router),
-		IdleTimeout:  120 * time.Second,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		Handler: router,
+		Addr:    address,
 	}
 
-	// Start the server in a goroutine
+	// Pokrenite gorutinu za PeriodicCleanup
+	go userService.PeriodicCleanup()
+
+	// Pokrenite server
 	go func() {
-		log.Println("Server listening on port", port)
-		if err := server.ListenAndServe(); err != nil {
-			log.Fatal(err)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Could not listen on %s: %v\n", address, err)
 		}
 	}()
 
 	// Set up signal handling for graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, os.Kill)
-
-	userService.PeriodicCleanup()
 
 	// Wait for shutdown signal
 	sig := <-sigCh
