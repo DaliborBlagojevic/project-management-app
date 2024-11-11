@@ -96,15 +96,39 @@ func (ur *UserRepo) GetAvailableMembers(projectId string) ([]map[string]interfac
 	defer cancel()
 
 	usersCollection := ur.getCollection()
+	projectsCollection := ur.cli.Database("mongoDemo").Collection("projects")
 
 	var users domain.Users
 
-	// Find all users that are active, with role 3 (member), and that are not assigned to the specified project.
-	// Get only their ID, Username, Name, and Surname.
+	// Konvertujemo projectId u ObjectID
+	objID, err := primitive.ObjectIDFromHex(projectId)
+	if err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+
+	// Dohvatamo projekat iz baze podataka
+	var project struct {
+		Members []struct {
+			Id primitive.ObjectID `bson:"_id"`
+		} `bson:"members"`
+	}
+	err = projectsCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&project)
+	if err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+
+	// Kreiramo mapu članova projekta za brzu proveru
+	memberMap := make(map[primitive.ObjectID]bool)
+	for _, member := range project.Members {
+		memberMap[member.Id] = true
+	}
+
+	// Find all users that are active, with role 3 (member)
 	usersCursor, err := usersCollection.Find(ctx, bson.M{
 		"isActive": true,
 		"role":     3,
-		"projects": bson.M{"$ne": projectId},
 	}, options.Find().SetProjection(bson.M{"_id": 1, "username": 1, "name": 1, "surname": 1}))
 	if err != nil {
 		ur.logger.Println(err)
@@ -118,12 +142,15 @@ func (ur *UserRepo) GetAvailableMembers(projectId string) ([]map[string]interfac
 	// Filtriraj podatke pre slanja na frontend
 	var userResponses []map[string]interface{}
 	for _, user := range users {
-		userResponses = append(userResponses, map[string]interface{}{
-			"Id":       user.Id.Hex(),
-			"Username": user.Username,
-			"Name":     user.Name,
-			"Surname":  user.Surname,
-		})
+		// Proveravamo da li korisnik već postoji u listi članova projekta
+		if _, exists := memberMap[user.Id]; !exists {
+			userResponses = append(userResponses, map[string]interface{}{
+				"Id":       user.Id.Hex(),
+				"Username": user.Username,
+				"Name":     user.Name,
+				"Surname":  user.Surname,
+			})
+		}
 	}
 
 	return userResponses, nil
