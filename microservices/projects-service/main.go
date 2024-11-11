@@ -59,7 +59,7 @@ func main() {
 	patchRouter.HandleFunc("/projects/{id}/addMember", projectHandler.AddMember).Methods("PATCH")
 
 	// Middleware za deserializaciju korisničkih podataka, primenjen samo na PATCH i POST rute gde je potrebno
-	patchRouter.Use(projectHandler.ProjectContextMiddleware)
+	//patchRouter.Use(projectHandler.ProjectContextMiddleware)
 
 	cors := gorillaHandlers.CORS(
 		gorillaHandlers.AllowedOrigins([]string{"*"}),

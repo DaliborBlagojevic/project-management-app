@@ -109,9 +109,9 @@ func (h ProjectHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 func (h ProjectHandler) AddMember(w http.ResponseWriter, r *http.Request) {
 	// Dohvatamo ID projekta iz URL parametra
 	vars := mux.Vars(r)
-	projectId := vars["id"]
+	id := vars["id"]
 
-	// Dohvatamo korisnika iz JSON tela zahteva
+	// Iz tela zahteva čitamo korisnika koji se dodaje i kreiramo domain.User objekat
 	user := &domain.User{}
 	err := user.FromJSON(r.Body)
 	if err != nil {
@@ -119,15 +119,15 @@ func (h ProjectHandler) AddMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Dodajemo korisnika u projekat koristeći ProjectService
-	err = h.projects.AddMember(projectId, *user)
+	// Pozivamo ProjectService da doda korisnika u projekat
+	err = h.projects.AddMember(id, *user)
 	if err != nil {
 		writeErrorResp(err, w)
 		return
 	}
 
-	// Šaljemo odgovor sa statusom 200 OK
-	writeResp(nil, http.StatusOK, w)
+	// Ako je sve prošlo OK, šaljemo prazan odgovor sa statusom 204 No Content
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (u *ProjectHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {

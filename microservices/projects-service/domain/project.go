@@ -68,5 +68,5 @@ type ProjectRepository interface {
 	GetAllByManager(managerID string) (Projects, error) // promenjeno ime parametra u managerID
 	GetAll() (Projects, error)
 	Insert(project Project) (Project, error)
-	Update(project Project) error
+	AddMember(projectId primitive.ObjectID, user User) error
 }

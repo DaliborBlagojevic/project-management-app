@@ -3,7 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"project-management-app/microservices/projects-service/domain"
 	"time"
@@ -56,14 +56,12 @@ func (s ProjectService) GetAll() (domain.Projects, error) {
 }
 
 func (s ProjectService) AddMember(projectId string, user domain.User) error {
-	project, err := s.projects.GetById(projectId)
+	objID, err := primitive.ObjectIDFromHex(projectId)
 	if err != nil {
-		return fmt.Errorf("error fetching project: %v", err)
+		return fmt.Errorf("invalid project ID: %v", err)
 	}
 
-	project.Members = append(project.Members, &user)
-
-	return s.projects.Update(*project)
+	return s.projects.AddMember(objID, user)
 }
 
 func (s *ProjectService) GetUser(username string) (domain.User, error) {
@@ -80,7 +78,7 @@ func (s *ProjectService) GetUser(username string) (domain.User, error) {
 		return domain.User{}, fmt.Errorf("user not found")
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return domain.User{}, err
 	}

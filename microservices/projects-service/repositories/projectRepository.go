@@ -175,14 +175,18 @@ func (ur *ProjectRepo) GetAllByManager(managerId string) (domain.Projects, error
 	return projects, nil
 }
 
-func (ur *ProjectRepo) Update(project domain.Project) error {
+func (ur *ProjectRepo) AddMember(projectId primitive.ObjectID, user domain.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	projectDto := dao.NewProjectDao(project)
-
 	projectsCollection := ur.getCollection()
-	_, err := projectsCollection.ReplaceOne(ctx, bson.M{"_id": project.Id}, &projectDto)
+	_, err := projectsCollection.UpdateOne(
+		ctx,
+		bson.M{"_id": projectId},
+		bson.M{
+			"$push": bson.M{"members": user},
+		},
+	)
 	if err != nil {
 		ur.logger.Println("Error updating document:", err)
 		return err
@@ -197,14 +201,33 @@ func (ur *ProjectRepo) GetById(id string) (*domain.Project, error) {
 
 	projectsCollection := ur.getCollection()
 
-	var project domain.Project
+	var project struct {
+		Id         primitive.ObjectID   `bson:"_id,omitempty"`
+		Manager    primitive.ObjectID   `bson:"manager"`
+		Name       string               `bson:"name"`
+		EndDate    time.Time            `bson:"end_date"`
+		MinWorkers int                  `bson:"min_workers,omitempty"`
+		MaxWorkers int                  `bson:"max_workers"`
+		Members    []primitive.ObjectID `bson:"members,omitempty"`
+	}
 	objID, _ := primitive.ObjectIDFromHex(id)
 	err := projectsCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&project)
 	if err != nil {
 		ur.logger.Println(err)
 		return nil, err
 	}
-	return &project, nil
+
+	// Kreiramo Project objekat sa dekodiranim podacima
+	domainProject := &domain.Project{
+		Id:         project.Id,
+		Name:       project.Name,
+		EndDate:    project.EndDate,
+		MinWorkers: project.MinWorkers,
+		MaxWorkers: project.MaxWorkers,
+		Members:    domain.Users{},
+	}
+
+	return domainProject, nil
 }
 
 func (ur *ProjectRepo) getCollection() *mongo.Collection {
