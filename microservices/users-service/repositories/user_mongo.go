@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"project-management-app/microservices/users-service/domain"
+	"example.com/project-management-app/microservices/users-service/domain"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"

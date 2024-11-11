@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 	"net/smtp"
-	"project-management-app/microservices/users-service/domain"
-	"project-management-app/microservices/users-service/repositories"
-	"project-management-app/microservices/users-service/services"
+	"example.com/project-management-app/microservices/users-service/domain"
+	"example.com/project-management-app/microservices/users-service/repositories"
+	"example.com/project-management-app/microservices/users-service/services"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"

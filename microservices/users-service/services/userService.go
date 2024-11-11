@@ -3,8 +3,8 @@ package services
 import (
 
 	"log"
-	"project-management-app/microservices/users-service/domain"
-	"project-management-app/microservices/users-service/repositories"
+	"example.com/project-management-app/microservices/users-service/domain"
+	"example.com/project-management-app/microservices/users-service/repositories"
 	"time"
 	"go.mongodb.org/mongo-driver/mongo"
 )

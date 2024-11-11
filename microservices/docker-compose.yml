@@ -1,10 +1,13 @@
 version: "3.1"
 
+
+
 services:
+    
   # Users service
   users-server:
     build:
-      context: ./users-service
+      context: ./microservices/users-service
       dockerfile: Dockerfile
     restart: always
     container_name: "user-server"
@@ -18,11 +21,12 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+        
 
   # Projects service
   projects-server:
     build:
-      context: ./projects-service
+      context: ./microservices/projects-service
       dockerfile: Dockerfile
     restart: always
     container_name: "project-server"

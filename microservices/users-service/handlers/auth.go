@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"project-management-app/microservices/users-service/services"
+	"example.com/project-management-app/microservices/users-service/services"
 )
 
 

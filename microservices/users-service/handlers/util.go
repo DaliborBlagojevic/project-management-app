@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"project-management-app/microservices/users-service/domain"
+	"example.com/project-management-app/microservices/users-service/domain"
 	"strings"
 )
 

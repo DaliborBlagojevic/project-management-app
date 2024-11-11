@@ -1,0 +1,31 @@
+# Base image with Go installed
+FROM golang:1.22.9 as builder
+
+# Set the Current Working Directory inside the container
+WORKDIR /app
+
+# Copy the go.mod and go.sum files
+COPY go.mod ./
+COPY go.sum ./
+
+# Download the dependencies
+RUN go mod download
+
+# Copy the entire proto folder
+COPY . .
+
+# Generate gRPC code from proto files
+RUN protoc --go_out=. --go-grpc_out=. proto/*.proto
+
+# Final stage: build a minimal image
+FROM golang:1.22.9
+
+# Set the Current Working Directory inside the container
+WORKDIR /app
+
+# Copy generated code from builder
+COPY --from=builder /app .
+
+# Run a command if necessary (depending on how you want to use this container)
+# Example: This could run a simple gRPC server for proto testing
+CMD ["go", "run", "main.go"]  # Adjust this if you have a different entry point

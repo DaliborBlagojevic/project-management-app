@@ -1,8 +1,8 @@
 package services
 
 import (
-	"project-management-app/microservices/users-service/domain"
-	"project-management-app/microservices/users-service/repositories"
+	"example.com/project-management-app/microservices/users-service/domain"
+	"example.com/project-management-app/microservices/users-service/repositories"
 )
 
 
