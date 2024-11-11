@@ -57,7 +57,7 @@ const (
 )
 
 func (r Role) String() string {
-	return [...]string{"Unauthorized user", "Project manager", "Project member"}[r-1]
+	return [...]string{"UNAUTHORIZED_USER", "PROJECT_MANAGER", "PROJECT_MEMBER"}[r-1]
 }
 func (r Role) EnumIndex() int {
 	return int(r)
