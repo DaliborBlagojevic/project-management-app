@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"log"
 	"project-management-app/microservices/users-service/domain"
 	"project-management-app/microservices/users-service/repositories"
 	"time"
@@ -35,9 +34,14 @@ func (s AuthService) LogIn(username, password string) (token string, err error) 
 
 	user, err = s.users.GetByUsername(username)
 	if err != nil {
+		err = domain.ErrUserNotFound()
 		return
 	}
-	log.Println(password, user.Password)
+
+	if !user.IsActive {
+		err = domain.ErrUserNotActive()
+		return
+	}
 
 	if CheckPasswordHash(password, user.Password) {
 		return createToken(*user)

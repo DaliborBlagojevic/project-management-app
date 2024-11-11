@@ -8,6 +8,7 @@ var (
 	errForeignConnection       error = errors.New("not a user's connection")
 	errPostNotFound            error = errors.New("Post not found")
 	errUserNotFound            error = errors.New("user not found")
+	errUserNotActive           error = errors.New("user not active")
 	errInvalidCredentials      error = errors.New("incorrect username or password")
 	errInvalidToken            error = errors.New("token invalid")
 	errUnauthorized            error = errors.New("unauthorized")
@@ -31,6 +32,10 @@ func ErrPostNotFound() error {
 
 func ErrUserNotFound() error {
 	return errUserNotFound
+}
+
+func ErrUserNotActive() error {
+	return errUserNotActive
 }
 
 func ErrInvalidCredentials() error {
