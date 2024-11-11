@@ -6,6 +6,8 @@ import (
 	"project-management-app/microservices/projects-service/domain"
 	"project-management-app/microservices/projects-service/services"
 	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 type KeyProduct struct{}
@@ -102,6 +104,30 @@ func (h ProjectHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	// Šaljemo odgovor kao JSON sa statusom 200 OK
 	writeResp(resp, http.StatusOK, w)
+}
+
+func (h ProjectHandler) AddMember(w http.ResponseWriter, r *http.Request) {
+	// Dohvatamo ID projekta iz URL parametra
+	vars := mux.Vars(r)
+	projectId := vars["id"]
+
+	// Dohvatamo korisnika iz JSON tela zahteva
+	user := &domain.User{}
+	err := user.FromJSON(r.Body)
+	if err != nil {
+		writeErrorResp(err, w)
+		return
+	}
+
+	// Dodajemo korisnika u projekat koristeći ProjectService
+	err = h.projects.AddMember(projectId, *user)
+	if err != nil {
+		writeErrorResp(err, w)
+		return
+	}
+
+	// Šaljemo odgovor sa statusom 200 OK
+	writeResp(nil, http.StatusOK, w)
 }
 
 func (u *ProjectHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {

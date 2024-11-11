@@ -14,6 +14,7 @@ type ProjectDao struct {
 	EndDate    string             `json:"end_date"`
 	MinWorkers string             `json:"min_workers"`
 	MaxWorkers string             `json:"max_workers"`
+	Members    domain.Users       `json:"members"`
 }
 
 func (dao *ProjectDao) ToDomain() (domain.Project, error) {
@@ -38,6 +39,7 @@ func (dao *ProjectDao) ToDomain() (domain.Project, error) {
 		EndDate:    endDate,
 		MinWorkers: minWorkers,
 		MaxWorkers: maxWorkers,
+		Members:    domain.Users{},
 	}, nil
 }
 
@@ -48,5 +50,6 @@ func NewProjectDao(project domain.Project) ProjectDao {
 		EndDate:    project.EndDate.Format("2006-01-02"),
 		MinWorkers: strconv.Itoa(project.MinWorkers),
 		MaxWorkers: strconv.Itoa(project.MaxWorkers),
+		Members:    project.Members,
 	}
 }

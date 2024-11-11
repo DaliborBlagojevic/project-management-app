@@ -55,6 +55,9 @@ func main() {
 	// PATCH subrouter
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
 
+	// PATCH ruta za dodavanje korisnika u projekat
+	patchRouter.HandleFunc("/projects/{id}/addMember", projectHandler.AddMember).Methods("PATCH")
+
 	// Middleware za deserializaciju korisničkih podataka, primenjen samo na PATCH i POST rute gde je potrebno
 	patchRouter.Use(projectHandler.ProjectContextMiddleware)
 

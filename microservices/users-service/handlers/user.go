@@ -113,6 +113,19 @@ func (u *UserHandler) GetAll(rw http.ResponseWriter, h *http.Request) {
 	}
 }
 
+func (h UserHandler) GetAvailableMembers(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	projectId := vars["projectId"]
+
+	users, err := h.users.GetAvailableMembers(projectId)
+	if err != nil {
+		writeErrorResp(err, w)
+		return
+	}
+
+	writeResp(users, http.StatusOK, w)
+}
+
 func (p *UserHandler) GetUserById(rw http.ResponseWriter, h *http.Request) {
 
 	vars := mux.Vars(h)

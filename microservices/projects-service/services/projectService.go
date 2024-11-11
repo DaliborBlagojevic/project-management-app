@@ -37,11 +37,11 @@ func (s ProjectService) Create(managerUsername string, name string, endDate stri
 	project := domain.Project{
 		Id:         primitive.NewObjectID(),
 		Manager:    manager,
-		Members:    []domain.User{},
 		Name:       name,
 		EndDate:    parsedEndDate,
 		MinWorkers: minWorkers,
 		MaxWorkers: maxWorkers,
+		Members:    domain.Users{},
 	}
 
 	return s.projects.Insert(project)
@@ -53,6 +53,17 @@ func (s ProjectService) GetAll() (domain.Projects, error) {
 		return nil, fmt.Errorf("error fetching projects: %v", err)
 	}
 	return projects, nil
+}
+
+func (s ProjectService) AddMember(projectId string, user domain.User) error {
+	project, err := s.projects.GetById(projectId)
+	if err != nil {
+		return fmt.Errorf("error fetching project: %v", err)
+	}
+
+	project.Members = append(project.Members, &user)
+
+	return s.projects.Update(*project)
 }
 
 func (s *ProjectService) GetUser(username string) (domain.User, error) {

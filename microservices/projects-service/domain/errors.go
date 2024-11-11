@@ -6,7 +6,7 @@ var (
 	errConnectionNotFound      error = errors.New("connection not found")
 	errConnectionAlreadyExists error = errors.New("connection already exists")
 	errForeignConnection       error = errors.New("not a user's connection")
-	errPostNotFound            error = errors.New("Post not found")
+	errPostNotFound            error = errors.New("post not found")
 	errUserNotFound            error = errors.New("user not found")
 	errInvalidCredentials      error = errors.New("incorrect username or password")
 	errInvalidToken            error = errors.New("token invalid")

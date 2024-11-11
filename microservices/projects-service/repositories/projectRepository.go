@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -144,7 +144,6 @@ func (pr *ProjectRepo) GetAll() (domain.Projects, error) {
 		project := &domain.Project{
 			Id:         rawProject["_id"].(primitive.ObjectID),
 			Manager:    manager,
-			Members:    []domain.User{},
 			Name:       rawProject["name"].(string),
 			EndDate:    endDate,
 			MinWorkers: int(minWorkers),
@@ -174,6 +173,22 @@ func (ur *ProjectRepo) GetAllByManager(managerId string) (domain.Projects, error
 		return nil, err
 	}
 	return projects, nil
+}
+
+func (ur *ProjectRepo) Update(project domain.Project) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	projectDto := dao.NewProjectDao(project)
+
+	projectsCollection := ur.getCollection()
+	_, err := projectsCollection.ReplaceOne(ctx, bson.M{"_id": project.Id}, &projectDto)
+	if err != nil {
+		ur.logger.Println("Error updating document:", err)
+		return err
+	}
+
+	return nil
 }
 
 func (ur *ProjectRepo) GetById(id string) (*domain.Project, error) {
@@ -224,7 +239,7 @@ func GetUserById(id string) (domain.User, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return domain.User{}, err
 	}
