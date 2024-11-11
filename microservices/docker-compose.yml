@@ -37,6 +37,24 @@ services:
       mongo:
         condition: service_healthy
 
+        # Task service
+  task-server:
+    build:
+      context: ./task-service
+      dockerfile: Dockerfile
+    restart: always
+    container_name: "task-server"
+    hostname: "task-server"
+    # Mapping ports
+    ports:
+      - 8084:8084
+    environment:
+      - PORT=8084
+      - MONGO_DB_URI=mongodb://root:pass@mongo:27017
+    depends_on:
+      mongo:
+        condition: service_healthy
+
   # MongoDB
   mongo:
     image: mongo
