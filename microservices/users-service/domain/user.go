@@ -43,6 +43,18 @@ func (u User) Equals(user User) bool {
 	return u.Id == user.Id
 }
 
+func (u User) MarshalJSON() ([]byte, error) {
+	type Alias User
+
+	return json.Marshal(&struct {
+		Role string `json:"role"`
+		*Alias
+	}{
+		Role:  u.Role.String(),
+		Alias: (*Alias)(&u),
+	})
+}
+
 type Role int
 
 const (

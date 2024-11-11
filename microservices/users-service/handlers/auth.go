@@ -31,10 +31,17 @@ func (h AuthHandler) LogIn(w http.ResponseWriter, r *http.Request) {
 	token, err := h.auth.LogIn(req.Username, req.Password)
 	if err != nil {
 		log.Printf("Error in login func %s: %v", req.Username, err)
-		if err == domain.ErrInvalidCredentials() {
+		if err == domain.ErrInvalidCredentials() || err == domain.ErrUserNotFound() {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"error": "incorrect username or password"}`))
+			return
+		}
+
+		if err == domain.ErrUserNotActive() {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"error": "user not active"}`))
 			return
 		}
 		writeErrorResp(err, w)
@@ -60,24 +67,6 @@ func NewAuthMiddleware(auth services.AuthService) (AuthMiddleware, error) {
 		auth: auth,
 	}, nil
 }
-
-// func (m AuthMiddleware) Handle(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		token := r.Header.Get("Auth-Token")
-// 		log.Println("Received Auth-Token:", token)
-
-// 		authenticated, err := m.auth.ResolveUser(token)
-// 		if err != nil {
-// 			log.Println("Error in ResolveUser:", err)
-// 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-// 			return
-// 		}
-
-// 		log.Println("User authenticated:", authenticated.Username)
-// 		r = r.WithContext(context.WithValue(r.Context(), "auth", &authenticated))
-// 		next.ServeHTTP(w, r)
-// 	})
-// }
 
 func (h AuthHandler) MiddlewareAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -141,7 +130,7 @@ func (h AuthHandler) MiddlewareAuthManager(next http.Handler) http.Handler {
 
 		if tokenClaims.Role != domain.Role.String(2) {
 			rw.WriteHeader(http.StatusForbidden)
-			fmt.Fprint(rw, `{"error": "User is not a manager"}`)	
+			fmt.Fprint(rw, `{"error": "User is not a manager"}`)
 			return
 		}
 
