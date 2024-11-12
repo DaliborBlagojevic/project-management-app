@@ -6,6 +6,7 @@ import (
 	"project-management-app/microservices/users-service/domain"
 	"project-management-app/microservices/users-service/repositories"
 	"time"
+
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -40,27 +41,29 @@ func (s UserService) Create(username, password, name, surname, email, roleString
 		Role:           role,
 		IsActive:       false,
 		ActivationCode: activationCode,
-		CreatedAt:      time.Now(), 
+		CreatedAt:      time.Now(),
 	}
 
 	return s.users.Insert(user)
 }
 
-
-func (s *UserService) PeriodicCleanup() {
-    ticker := time.NewTicker(2 * time.Minute) 
-    defer ticker.Stop()
-
-    for {
-        select {
-        case <-ticker.C:
-            err := s.users.RemoveExpiredActivationCodes()
-            if err != nil {
-                log.Printf("Error during cleanup: %v", err)
-            } else {
-                log.Println("Successfully removed expired activation codes.")
-            }
-        }
-    }
+func (s *UserService) GetAvailableMembers(projectId string) ([]map[string]interface{}, error) {
+	return s.users.GetAvailableMembers(projectId)
 }
 
+func (s *UserService) PeriodicCleanup() {
+	ticker := time.NewTicker(2 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			err := s.users.RemoveExpiredActivationCodes()
+			if err != nil {
+				log.Printf("Error during cleanup: %v", err)
+			} else {
+				log.Println("Successfully removed expired activation codes.")
+			}
+		}
+	}
+}

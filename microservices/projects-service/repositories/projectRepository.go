@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
-	"project-management-app/microservices/projects-service/dao"
 	"project-management-app/microservices/projects-service/domain"
-	"strconv"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -51,7 +49,6 @@ func (pr *ProjectRepo) Disconnect(ctx context.Context) error {
 	}
 	return nil
 }
-
 // Check database connection
 func (pr *ProjectRepo) Ping() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -72,88 +69,22 @@ func (pr *ProjectRepo) Ping() {
 }
 
 func (pr *ProjectRepo) GetAll() (domain.Projects, error) {
+	// Initialise context (after 5 seconds timeout, abort operation)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	projectsCollection := pr.getCollection()
-
-	var rawProjects []map[string]interface{}
-	projectsCursor, err := projectsCollection.Find(ctx, bson.M{})
-	if err != nil {
-		pr.logger.Println("Error fetching projects:", err)
-		return nil, err
-	}
-	if err = projectsCursor.All(ctx, &rawProjects); err != nil {
-		pr.logger.Println("Error decoding projects:", err)
-		return nil, err
-	}
+    projectsCollection := pr.getCollection()
 
 	var projects domain.Projects
-	for _, rawProject := range rawProjects {
-		managerID, ok := rawProject["manager"].(primitive.ObjectID)
-		if !ok {
-			pr.logger.Println("Manager ID is not an ObjectID for project:", rawProject["name"])
-			continue
-		}
-
-		manager, err := GetUserById(managerID.Hex())
-		if err != nil {
-			pr.logger.Println("Error fetching manager for project:", rawProject["name"], err)
-			continue
-		}
-
-		// Provera i konverzija `enddate` polja
-		var endDate time.Time
-		if rawEndDate, exists := rawProject["enddate"]; exists && rawEndDate != nil {
-			endDateStr, ok := rawEndDate.(string)
-			if !ok {
-				pr.logger.Println("Error: enddate is not a string for project:", rawProject["name"])
-				continue
-			}
-			endDate, err = time.Parse("2006-01-02", endDateStr)
-			if err != nil {
-				pr.logger.Println("Error parsing enddate for project:", rawProject["name"], err)
-				continue
-			}
-		}
-
-		// Konverzija `minworkers` i `maxworkers` polja iz stringa u int32
-		var minWorkers, maxWorkers int32
-		if rawMinWorkers, ok := rawProject["minworkers"].(string); ok {
-			parsedMinWorkers, err := strconv.Atoi(rawMinWorkers)
-			if err != nil {
-				pr.logger.Println("Error parsing minworkers for project:", rawProject["name"], err)
-				continue
-			}
-			minWorkers = int32(parsedMinWorkers)
-		} else if rawMinWorkers, ok := rawProject["minworkers"].(int32); ok {
-			minWorkers = rawMinWorkers
-		}
-
-		if rawMaxWorkers, ok := rawProject["maxworkers"].(string); ok {
-			parsedMaxWorkers, err := strconv.Atoi(rawMaxWorkers)
-			if err != nil {
-				pr.logger.Println("Error parsing maxworkers for project:", rawProject["name"], err)
-				continue
-			}
-			maxWorkers = int32(parsedMaxWorkers)
-		} else if rawMaxWorkers, ok := rawProject["maxworkers"].(int32); ok {
-			maxWorkers = rawMaxWorkers
-		}
-
-		project := &domain.Project{
-			Id:         rawProject["_id"].(primitive.ObjectID),
-			Manager:    manager,
-			Members:    []domain.User{},
-			Name:       rawProject["name"].(string),
-			EndDate:    endDate,
-			MinWorkers: int(minWorkers),
-			MaxWorkers: int(maxWorkers),
-		}
-
-		projects = append(projects, project)
+	projectsCursor, err := projectsCollection.Find(ctx, bson.M{})
+	if err != nil {
+		pr.logger.Println(err)
+		return nil, err
 	}
-
+	if err = projectsCursor.All(ctx, &projects); err != nil {
+		pr.logger.Println(err)
+		return nil, err
+	}
 	return projects, nil
 }
 
@@ -176,20 +107,59 @@ func (ur *ProjectRepo) GetAllByManager(managerId string) (domain.Projects, error
 	return projects, nil
 }
 
+func (ur *ProjectRepo) AddMember(projectId primitive.ObjectID, user domain.User) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	projectsCollection := ur.getCollection()
+	_, err := projectsCollection.UpdateOne(
+		ctx,
+		bson.M{"_id": projectId},
+		bson.M{
+			"$push": bson.M{"members": user},
+		},
+	)
+	if err != nil {
+		ur.logger.Println("Error updating document:", err)
+		return err
+	}
+
+	return nil
+}
+
 func (ur *ProjectRepo) GetById(id string) (*domain.Project, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	projectsCollection := ur.getCollection()
 
-	var project domain.Project
+	var project struct {
+		Id         primitive.ObjectID   `bson:"_id,omitempty"`
+		Manager    primitive.ObjectID   `bson:"manager"`
+		Name       string               `bson:"name"`
+		EndDate    time.Time            `bson:"end_date"`
+		MinWorkers int                  `bson:"min_workers,omitempty"`
+		MaxWorkers int                  `bson:"max_workers"`
+		Members    []primitive.ObjectID `bson:"members,omitempty"`
+	}
 	objID, _ := primitive.ObjectIDFromHex(id)
 	err := projectsCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&project)
 	if err != nil {
 		ur.logger.Println(err)
 		return nil, err
 	}
-	return &project, nil
+
+	// Kreiramo Project objekat sa dekodiranim podacima
+	domainProject := &domain.Project{
+		Id:         project.Id,
+		Name:       project.Name,
+		EndDate:    project.EndDate,
+		MinWorkers: project.MinWorkers,
+		MaxWorkers: project.MaxWorkers,
+		Members:    domain.Users{},
+	}
+
+	return domainProject, nil
 }
 
 func (ur *ProjectRepo) getCollection() *mongo.Collection {
@@ -198,21 +168,18 @@ func (ur *ProjectRepo) getCollection() *mongo.Collection {
 	return projectsCollection
 }
 
-func (ur *ProjectRepo) Insert(project domain.Project) (domain.Project, error) {
+func (pr *ProjectRepo) Create(project *domain.Project) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+    projectsCollection := pr.getCollection()
 
-	projectDto := dao.NewProjectDao(project)
-
-	projectsCollection := ur.getCollection()
-	result, err := projectsCollection.InsertOne(ctx, &projectDto)
+	result, err := projectsCollection.InsertOne(ctx, &project)
 	if err != nil {
-		ur.logger.Println("Error inserting document:", err)
-		return domain.Project{}, err
+		pr.logger.Println(err)
+		return err
 	}
-
-	ur.logger.Printf("Document ID: %v\n", result.InsertedID)
-	return project, nil
+	pr.logger.Printf("Documents ID: %v\n", result.InsertedID)
+	return nil
 }
 
 func GetUserById(id string) (domain.User, error) {
@@ -224,7 +191,7 @@ func GetUserById(id string) (domain.User, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return domain.User{}, err
 	}
@@ -237,3 +204,5 @@ func GetUserById(id string) (domain.User, error) {
 
 	return user, nil
 }
+
+

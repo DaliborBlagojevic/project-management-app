@@ -91,6 +91,71 @@ func (ur *UserRepo) GetAll() (domain.Users, error) {
 	return users, nil
 }
 
+func (ur *UserRepo) GetAvailableMembers(projectId string) ([]map[string]interface{}, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	usersCollection := ur.getCollection()
+	projectsCollection := ur.cli.Database("mongoDemo").Collection("projects")
+
+	var users domain.Users
+
+	// Konvertujemo projectId u ObjectID
+	objID, err := primitive.ObjectIDFromHex(projectId)
+	if err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+
+	// Dohvatamo projekat iz baze podataka
+	var project struct {
+		Members []struct {
+			Id primitive.ObjectID `bson:"_id"`
+		} `bson:"members"`
+	}
+	err = projectsCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&project)
+	if err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+
+	// Kreiramo mapu članova projekta za brzu proveru
+	memberMap := make(map[primitive.ObjectID]bool)
+	for _, member := range project.Members {
+		memberMap[member.Id] = true
+	}
+
+	// Find all users that are active, with role 3 (member)
+	usersCursor, err := usersCollection.Find(ctx, bson.M{
+		"isActive": true,
+		"role":     3,
+	}, options.Find().SetProjection(bson.M{"_id": 1, "username": 1, "name": 1, "surname": 1}))
+	if err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+	if err = usersCursor.All(ctx, &users); err != nil {
+		ur.logger.Println(err)
+		return nil, err
+	}
+
+	// Filtriraj podatke pre slanja na frontend
+	var userResponses []map[string]interface{}
+	for _, user := range users {
+		// Proveravamo da li korisnik već postoji u listi članova projekta
+		if _, exists := memberMap[user.Id]; !exists {
+			userResponses = append(userResponses, map[string]interface{}{
+				"Id":       user.Id.Hex(),
+				"Username": user.Username,
+				"Name":     user.Name,
+				"Surname":  user.Surname,
+			})
+		}
+	}
+
+	return userResponses, nil
+}
+
 func (ur *UserRepo) GetById(id string) (*domain.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -114,7 +179,7 @@ func (ur *UserRepo) GetByUsername(username string) (*domain.User, error) {
 	usersCollection := ur.getCollection()
 
 	var user domain.User
-	
+
 	err := usersCollection.FindOne(ctx, bson.M{"username": username}).Decode(&user)
 	if err != nil {
 		ur.logger.Println(err)
@@ -179,6 +244,7 @@ func (pr *UserRepo) ActivateAccount(uuid string, user *domain.User) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	usersCollection := pr.getCollection()
+
 	filter := bson.M{"activationCode": uuid}
 	update := bson.M{"$set": bson.M{
 		"isActive": true,
@@ -206,10 +272,21 @@ func (pr *UserRepo) ActivateAccount(uuid string, user *domain.User) error {
 
 
 func (ur *UserRepo) RemoveExpiredActivationCodes() error {
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-    usersCollection := ur.getCollection()
+	usersCollection := ur.getCollection()
+
+
+	// Definiši vreme isteka (5 minuta)
+	expirationTime := time.Now().Add(-1 * time.Minute)
+
+	// Pronađi sve korisnike čiji je `CreatedAt` stariji od 5 minuta i koji nisu aktivirani
+	filter := bson.M{
+		"isActive":       false,
+		"createdAt":      bson.M{"$lt": expirationTime},
+		"activationCode": bson.M{"$ne": nil},
+	}
 
     // Definiši vreme isteka (2 minuta)
     expirationTime := time.Now().Add(-1 * time.Minute)
@@ -218,17 +295,15 @@ func (ur *UserRepo) RemoveExpiredActivationCodes() error {
     filter := bson.M{
         "createdAt":       bson.M{"$lt": expirationTime},
         "activationCode": bson.M{"$ne": nil},
-    }
 
-    update := bson.M{
-        "$unset": bson.M{"activationCode": ""}, // Briši `activationCode`
-    }
+	update := bson.M{
+		"$unset": bson.M{"activationCode": ""}, // Briši `activationCode`
+	}
 
-    _, err := usersCollection.UpdateMany(ctx, filter, update)
-    if err != nil {
-        return fmt.Errorf("failed to remove expired activation codes: %v", err)
-    }
+	_, err := usersCollection.UpdateMany(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("failed to remove expired activation codes: %v", err)
+	}
 
-    return nil
+	return nil
 }
-

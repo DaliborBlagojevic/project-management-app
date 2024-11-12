@@ -44,6 +44,7 @@ func main() {
 	getRouter.HandleFunc("/users", userHandler.GetAll)
 	getRouter.HandleFunc("/users/{username}", userHandler.GetUserByUsername)
 	getRouter.HandleFunc("/users/id/{id}", userHandler.GetUserById)
+	getRouter.HandleFunc("/projects/{projectId}/availableMembers", userHandler.GetAvailableMembers)
 
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
 	patchRouter.HandleFunc("/users/{uuid}", userHandler.PatchUser)

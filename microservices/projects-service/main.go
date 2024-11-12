@@ -30,27 +30,23 @@ func main() {
 	projectRepository, err := repositories.New(timeoutContext, storeLogger)
 	handleErr(err)
 
-	projectService, err := services.NewProjectService(projectRepository)
-	handleErr(err)
+	projectService := services.NewUserService(projectRepository)
 
-	projectHandler, err := handlers.NewprojectHandler(projectService)
-	handleErr(err)
+	projectHandler := handlers.NewprojectHandler(projectService, projectRepository)
 
 	// Set up the router
 	router := mux.NewRouter()
 	router.Use(projectHandler.MiddlewareContentTypeSet)
 
 	getRouter := router.Methods(http.MethodGet).Subrouter()
-	postRouter := router.Methods(http.MethodPost).Subrouter()
-
 	getRouter.HandleFunc("/projects", projectHandler.GetAll).Methods("GET")
 
+	postRouter := router.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/projects", projectHandler.Create).Methods("POST")
+	postRouter.Use(projectHandler.ProjectContextMiddleware)
 
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
-
-	// Middleware za deserializaciju korisničkih podataka, primenjen samo na PATCH i POST rute gde je potrebno
-	patchRouter.Use(projectHandler.ProjectContextMiddleware)
+	patchRouter.HandleFunc("/projects/{id}/addMember", projectHandler.AddMember).Methods("PATCH")
 
 
 	
