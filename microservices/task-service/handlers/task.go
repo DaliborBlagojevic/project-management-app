@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"project-management-app/microservices/projects-service/domain"
 	"project-management-app/microservices/projects-service/services"
@@ -25,7 +24,7 @@ func NewTaskHandler(tasks services.TaskService) (TaskHandler, error) {
 
 // Create - Kreira novi zadatak
 func (h TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
-	log.Println("ovde 1")
+
 
 	req := &struct {
 		Status      domain.Status `json:"status"`
@@ -38,7 +37,7 @@ func (h TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	log.Println("ovde 2")
+
 	projectID, err := primitive.ObjectIDFromHex(req.ProjectId)
 	if err != nil {
 		writeErrorResp(err, w)
@@ -50,7 +49,7 @@ func (h TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		writeErrorResp(err, w)
 		return
 	}
-	log.Println("ovde 3")
+
 	resp := struct {
 		Id          string `json:"id"`
 		ProjectId   string `json:"projectId"`

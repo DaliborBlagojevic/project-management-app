@@ -24,4 +24,5 @@ const (
 
 type TaskRepository interface {
 	Insert(task Task) (Task, error)
+	FindByName(name string) (*Task, error)
 }

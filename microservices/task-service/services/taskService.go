@@ -1,9 +1,7 @@
 package services
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
+	"errors"
 	"project-management-app/microservices/projects-service/domain"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -24,37 +22,25 @@ func NewTaskService(tasks domain.TaskRepository) (TaskService, error) {
 
 // Create - Kreira novi zadatak sa prosleđenim parametrima
 func (s TaskService) Create(status domain.Status, name string, description string, projectID primitive.ObjectID) (domain.Task, error) {
+	// Proveri da li već postoji zadatak sa istim imenom
+	existingTask, err := s.tasks.FindByName(name)
+	if err != nil {
+		return domain.Task{}, err
+	}
+	if existingTask != nil {
+		return domain.Task{}, errors.New("zadatak sa istim imenom već postoji")
+	}
 
+	// Kreiraj novi zadatak
 	task := domain.Task{
 		Id:          primitive.NewObjectID(),
 		Project:     projectID,
 		Name:        name,
 		Description: description,
-		Status:      status,
+		Status:      1,
 	}
 
 	return s.tasks.Insert(task)
 }
 
-// GetUser - Dohvata korisnika po korisničkom imenu
-func (s *TaskService) GetUser(username string) (domain.User, error) {
 
-	url := fmt.Sprintf("http://user-server:8080/users/%s", username)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return domain.User{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return domain.User{}, fmt.Errorf("user not found")
-	}
-
-	var user domain.User
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		return domain.User{}, fmt.Errorf("failed to decode user: %v", err)
-	}
-
-	return user, nil
-}

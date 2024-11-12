@@ -52,6 +52,24 @@ func NewTaskRepo(ctx context.Context, logger *log.Logger) (*TaskRepo, error) {
 	}, nil
 }
 
+func (pr *TaskRepo) FindByName(name string) (*domain.Task, error) {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    var task domain.Task
+    filter := bson.M{"name": name}
+    err := pr.collection.FindOne(ctx, filter).Decode(&task)
+    if err != nil {
+        if err == mongo.ErrNoDocuments {
+            return nil, nil // Vraća nil ako nema rezultata
+        }
+        pr.logger.Println("Greška prilikom traženja zadatka:", err)
+        return nil, err
+    }
+
+    return &task, nil
+}
+
 // Insert umeće novi zadatak u MongoDB kolekciju
 func (pr *TaskRepo) Insert(task domain.Task) (domain.Task, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
