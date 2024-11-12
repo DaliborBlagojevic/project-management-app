@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"project-management-app/microservices/projects-service/domain"
+	"project-management-app/microservices/projects-service/repositories"
 	"project-management-app/microservices/projects-service/services"
-	"strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -13,97 +14,36 @@ import (
 type KeyProduct struct{}
 
 type ProjectHandler struct {
-	projects services.ProjectService
+	projects *services.ProjectService
+	repo  *repositories.ProjectRepo
 }
 
-func NewprojectHandler(projects services.ProjectService) (ProjectHandler, error) {
-	return ProjectHandler{
-		projects: projects,
-	}, nil
+func NewprojectHandler(s *services.ProjectService, r *repositories.ProjectRepo) *ProjectHandler {
+	return &ProjectHandler{s, r}
 }
 
-func (h ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (p *ProjectHandler) Create(rw http.ResponseWriter, h *http.Request) {
+	project := h.Context().Value(KeyProduct{}).(*domain.Project)
+	p.repo.Create(project)
+	rw.WriteHeader(http.StatusCreated)
+}
 
-	req := &struct {
-		ManagerUsername string
-		Name            string
-		EndDate         string
-		MinWorkers      int
-		MaxWorkers      int
-	}{}
-	err := readReq(req, r, w)
+func (p *ProjectHandler) GetAll(rw http.ResponseWriter, h *http.Request) {
+	projects, err := p.repo.GetAll()
 	if err != nil {
+		log.Print("Database exception: ", err)
+	}
+
+	if projects == nil {
 		return
 	}
 
-	project, err := h.projects.Create(req.ManagerUsername, req.Name, req.EndDate, req.MinWorkers, req.MaxWorkers)
+	err = projects.ToJSON(rw)
 	if err != nil {
-		writeErrorResp(err, w)
+		http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
+		log.Fatal("Unable to convert to json :", err)
 		return
 	}
-
-	resp := struct {
-		Id              string
-		ManagerId       string
-		ManagerUsername string
-		Name            string
-		EndDate         string
-		MinWorkers      string
-		MaxWorkers      string
-	}{
-		Id:              project.Id.String(),
-		ManagerId:       project.Manager.Id.String(),
-		ManagerUsername: project.Manager.Username,
-		Name:            project.Name,
-		EndDate:         project.EndDate.String(),
-		MinWorkers:      strconv.Itoa(project.MinWorkers),
-		MaxWorkers:      strconv.Itoa(project.MaxWorkers),
-	}
-	writeResp(resp, http.StatusCreated, w)
-
-}
-
-func (h ProjectHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	// Dohvatamo sve projekte koristeći ProjectService
-	projects, err := h.projects.GetAll()
-	if err != nil {
-		writeErrorResp(err, w)
-		return
-	}
-
-	// Pripremamo odgovor kao slice mapiranih struktura
-	resp := make([]struct {
-		Id              string `json:"id"`
-		ManagerId       string `json:"managerId"`
-		ManagerUsername string `json:"managerUsername"`
-		Name            string `json:"name"`
-		EndDate         string `json:"endDate"`
-		MinWorkers      int    `json:"minWorkers"`
-		MaxWorkers      int    `json:"maxWorkers"`
-	}, len(projects))
-
-	for i, project := range projects {
-		resp[i] = struct {
-			Id              string `json:"id"`
-			ManagerId       string `json:"managerId"`
-			ManagerUsername string `json:"managerUsername"`
-			Name            string `json:"name"`
-			EndDate         string `json:"endDate"`
-			MinWorkers      int    `json:"minWorkers"`
-			MaxWorkers      int    `json:"maxWorkers"`
-		}{
-			Id:              project.Id.Hex(),
-			ManagerId:       project.Manager.Id.Hex(),
-			ManagerUsername: project.Manager.Username,
-			Name:            project.Name,
-			EndDate:         project.EndDate.Format("2006-01-02"),
-			MinWorkers:      project.MinWorkers,
-			MaxWorkers:      project.MaxWorkers,
-		}
-	}
-
-	// Šaljemo odgovor kao JSON sa statusom 200 OK
-	writeResp(resp, http.StatusOK, w)
 }
 
 func (h ProjectHandler) AddMember(w http.ResponseWriter, r *http.Request) {
@@ -139,6 +79,7 @@ func (u *ProjectHandler) MiddlewareContentTypeSet(next http.Handler) http.Handle
 	})
 }
 
+
 func (u *ProjectHandler) ProjectContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
 
@@ -152,6 +93,40 @@ func (u *ProjectHandler) ProjectContextMiddleware(next http.Handler) http.Handle
 
 		ctx := context.WithValue(h.Context(), KeyProduct{}, project)
 		h = h.WithContext(ctx)
+		next.ServeHTTP(rw, h)
+	})
+}
+
+func (p *ProjectHandler) MiddlewareUsersDeserialization(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
+		users := &domain.Users{}
+		err := users.FromJSON(h.Body)
+		if err != nil {
+			http.Error(rw, "Unable to decode json", http.StatusBadRequest)
+			log.Fatal(err)
+			return
+		}
+
+		ctx := context.WithValue(h.Context(), KeyProduct{}, users)
+		h = h.WithContext(ctx)
+
+		next.ServeHTTP(rw, h)
+	})
+}
+
+func (p *ProjectHandler) MiddlewareUserDeserialization(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {
+		user := &domain.User{}
+		err := user.FromJSON(h.Body)
+		if err != nil {
+			http.Error(rw, "Unable to decode json", http.StatusBadRequest)
+			log.Fatal(err)
+			return
+		}
+
+		ctx := context.WithValue(h.Context(), KeyProduct{}, user)
+		h = h.WithContext(ctx)
+
 		next.ServeHTTP(rw, h)
 	})
 }

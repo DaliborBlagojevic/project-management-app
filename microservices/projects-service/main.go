@@ -27,39 +27,23 @@ func main() {
 	projectRepository, err := repositories.New(timeoutContext, storeLogger)
 	handleErr(err)
 
-	projectService, err := services.NewProjectService(projectRepository)
-	handleErr(err)
+	projectService := services.NewUserService(projectRepository)
 
-	projectHandler, err := handlers.NewprojectHandler(projectService)
-	handleErr(err)
+	projectHandler := handlers.NewprojectHandler(projectService, projectRepository)
 
 	// Set up the router
 	router := mux.NewRouter()
 	router.Use(projectHandler.MiddlewareContentTypeSet)
 
-	// GET subrouter
-	// getRouter := router.Methods(http.MethodGet).Subrouter()
-	// // Dodajemo GET rute ovde
-	// getRouter.HandleFunc("/users", userHandler.GetAllUsers) // Primer rute za dohvat svih korisnika (ako je potrebno)
-
-	// POST subrouter
 	getRouter := router.Methods(http.MethodGet).Subrouter()
-	postRouter := router.Methods(http.MethodPost).Subrouter()
-
-	// GET ruta za dohvat svih projekata
 	getRouter.HandleFunc("/projects", projectHandler.GetAll).Methods("GET")
 
-	// POST ruta za kreiranje novog projekta
+	postRouter := router.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/projects", projectHandler.Create).Methods("POST")
+	postRouter.Use(projectHandler.ProjectContextMiddleware)
 
-	// PATCH subrouter
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
-
-	// PATCH ruta za dodavanje korisnika u projekat
 	patchRouter.HandleFunc("/projects/{id}/addMember", projectHandler.AddMember).Methods("PATCH")
-
-	// Middleware za deserializaciju korisničkih podataka, primenjen samo na PATCH i POST rute gde je potrebno
-	//patchRouter.Use(projectHandler.ProjectContextMiddleware)
 
 	cors := gorillaHandlers.CORS(
 		gorillaHandlers.AllowedOrigins([]string{"*"}),

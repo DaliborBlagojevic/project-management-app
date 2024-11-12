@@ -34,6 +34,11 @@ func (p *Users) ToJSON(w io.Writer) error {
 	return e.Encode(p)
 }
 
+func (p *Users) FromJSON(r io.Reader) error {
+	d := json.NewDecoder(r)
+	return d.Decode(p)
+}
+
 func (p *User) ToJSON(w io.Writer) error {
 	e := json.NewEncoder(w)
 	return e.Encode(p)
@@ -61,12 +66,4 @@ func (p *Project) FromJSON(r io.Reader) error {
 
 func (u *Project) Equals(other *Project) bool { // promena parametra u pokazivač
 	return u.Id == other.Id
-}
-
-type ProjectRepository interface {
-	GetById(id string) (*Project, error)
-	GetAllByManager(managerID string) (Projects, error) // promenjeno ime parametra u managerID
-	GetAll() (Projects, error)
-	Insert(project Project) (Project, error)
-	AddMember(projectId primitive.ObjectID, user User) error
 }

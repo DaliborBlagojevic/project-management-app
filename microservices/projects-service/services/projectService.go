@@ -6,53 +6,17 @@ import (
 	"io"
 	"net/http"
 	"project-management-app/microservices/projects-service/domain"
-	"time"
+	"project-management-app/microservices/projects-service/repositories"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ProjectService struct {
-	projects domain.ProjectRepository
+	projects *repositories.ProjectRepo
 }
 
-func NewProjectService(projects domain.ProjectRepository) (ProjectService, error) {
-	return ProjectService{
-		projects: projects,
-	}, nil
-}
-
-func (s ProjectService) Create(managerUsername string, name string, endDate string, minWorkers int, maxWorkers int) (domain.Project, error) {
-
-	var manager domain.User
-
-	manager, err := s.GetUser(managerUsername)
-	if err != nil {
-		return domain.Project{}, err
-	}
-	parsedEndDate, err := time.Parse("2006-01-02", endDate)
-	if err != nil {
-		return domain.Project{}, err
-	}
-
-	project := domain.Project{
-		Id:         primitive.NewObjectID(),
-		Manager:    manager,
-		Name:       name,
-		EndDate:    parsedEndDate,
-		MinWorkers: minWorkers,
-		MaxWorkers: maxWorkers,
-		Members:    domain.Users{},
-	}
-
-	return s.projects.Insert(project)
-}
-
-func (s ProjectService) GetAll() (domain.Projects, error) {
-	projects, err := s.projects.GetAll()
-	if err != nil {
-		return nil, fmt.Errorf("error fetching projects: %v", err)
-	}
-	return projects, nil
+func NewUserService(p *repositories.ProjectRepo) *ProjectService {
+	return &ProjectService{p}
 }
 
 func (s ProjectService) AddMember(projectId string, user domain.User) error {
