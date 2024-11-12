@@ -20,7 +20,7 @@ type UserRepo struct {
 	logger *log.Logger
 }
 
-func New(ctx context.Context, logger *log.Logger) (*UserRepo, error) {
+func New(ctx context.Context, logger *log.Logger, ) (*UserRepo, error) {
 	dburi := os.Getenv("MONGO_DB_URI")
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(dburi))
@@ -248,23 +248,35 @@ func (pr *UserRepo) ActivateAccount(uuid string, user *domain.User) error {
 	filter := bson.M{"activationCode": uuid}
 	update := bson.M{"$set": bson.M{
 		"isActive": true,
+		"activationCode": "",
 	}}
+
 	result, err := usersCollection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		pr.logger.Println("Error updating user:", err)
+		return err
+	}
+
+	// Provera da li je pronađen i ažuriran neki dokument
+	if result.MatchedCount == 0 {
+		errMsg := "Your activation code has expired or is invalid"
+		pr.logger.Println(errMsg)
+		return domain.ErrCodeExpired()
+	}
+
 	pr.logger.Printf("Documents matched: %v\n", result.MatchedCount)
 	pr.logger.Printf("Documents updated: %v\n", result.ModifiedCount)
 
-	if err != nil {
-		pr.logger.Println(err)
-		return err
-	}
 	return nil
 }
+
 
 func (ur *UserRepo) RemoveExpiredActivationCodes() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	usersCollection := ur.getCollection()
+
 
 	// Definiši vreme isteka (5 minuta)
 	expirationTime := time.Now().Add(-1 * time.Minute)
@@ -275,6 +287,14 @@ func (ur *UserRepo) RemoveExpiredActivationCodes() error {
 		"createdAt":      bson.M{"$lt": expirationTime},
 		"activationCode": bson.M{"$ne": nil},
 	}
+
+    // Definiši vreme isteka (2 minuta)
+    expirationTime := time.Now().Add(-1 * time.Minute)
+
+    // Pronađi sve korisnike čiji je `CreatedAt` stariji od 2 minuta
+    filter := bson.M{
+        "createdAt":       bson.M{"$lt": expirationTime},
+        "activationCode": bson.M{"$ne": nil},
 
 	update := bson.M{
 		"$unset": bson.M{"activationCode": ""}, // Briši `activationCode`

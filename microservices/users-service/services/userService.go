@@ -1,7 +1,7 @@
 package services
 
 import (
-	"fmt"
+
 	"log"
 	"project-management-app/microservices/users-service/domain"
 	"project-management-app/microservices/users-service/repositories"
@@ -24,16 +24,14 @@ func (s UserService) Create(username, password, name, surname, email, roleString
 		return domain.User{}, err
 	}
 
-	// Proveri da li postoji korisnik sa istim username-om
 	existingUser, err := s.users.GetByUsername(username)
-	if err != nil && err != mongo.ErrNoDocuments { // mongo.ErrNoDocuments znači da korisnik ne postoji
+	if err != nil && err != mongo.ErrNoDocuments {
 		return domain.User{}, err
 	}
 	if existingUser != nil {
-		return domain.User{}, fmt.Errorf("user with username '%s' already exists", username)
+		return domain.User{}, domain.ErrUserAlreadyExists()
 	}
 
-	// Kreiraj novog korisnika
 	user := domain.User{
 		Username:       username,
 		Password:       password,
@@ -45,7 +43,6 @@ func (s UserService) Create(username, password, name, surname, email, roleString
 		ActivationCode: activationCode,
 		CreatedAt:      time.Now(),
 	}
-	log.Println(user, "u servisu")
 
 	return s.users.Insert(user)
 }

@@ -20,7 +20,7 @@ func writeErrorResp(err error, w http.ResponseWriter) {
 	w.Write([]byte(err.Error()))
 }
 
-func writeResp(resp any, statusCode int, w http.ResponseWriter) {
+func writeResp(resp any, _ int, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusCreated)
 	if resp == nil {
 		return

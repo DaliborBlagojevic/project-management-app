@@ -1,0 +1,95 @@
+version: "3.8"
+
+services:
+
+  # Users service
+  users-service:
+    image: users-service
+    hostname: ${USERS_SERVICE_HOST}
+    build:
+      context: ./microservices/users-service/
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      HOST: ${USERS_SERVICE_HOST}
+      PORT: ${USERS_SERVICE_PORT}
+      DB_HOST: ${USERS_DB_HOST}
+      DB_PORT: ${USERS_DB_PORT}
+      DB_USER: ${USERS_DB_USER}
+      DB_PASS: ${USERS_DB_PASS}
+      DB_NAME: ${USERS_DB_NAME}
+      MONGO_DB_URI: ${USERS_MONGO_DB_URI}
+    depends_on:
+      - users-db
+    networks:
+      - network
+
+  # Projects service
+  projects-service:
+    image: projects-service
+    hostname: ${PROJECTS_SERVICE_HOST}
+    build:
+      context: ./microservices/projects-service/
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      HOST: ${PROJECTS_SERVICE_HOST}
+      PORT: ${PROJECTS_SERVICE_PORT}
+      DB_HOST: ${PROJECTS_DB_HOST}
+      DB_PORT: ${PROJECTS_DB_PORT}
+      DB_USER: ${PROJECTS_DB_USER}
+      DB_PASS: ${PROJECTS_DB_PASS}
+      DB_NAME: ${PROJECTS_DB_NAME}
+      MONGO_DB_URI: ${PROJECTS_MONGO_DB_URI}
+    depends_on:
+      - projects-db
+    networks:
+      - network
+
+  # Users MongoDB
+  users-db:
+    image: mongo
+    container_name: users-db
+    hostname: ${USERS_DB_HOST}
+    restart: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${USERS_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${USERS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${USERS_DB_NAME}
+    networks:
+      - network
+
+  # Projects MongoDB
+  projects-db:
+    image: mongo
+    container_name: projects-db
+    hostname: ${PROJECTS_DB_HOST}
+    restart: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${PROJECTS_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${USERS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${USERS_DB_NAME}
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok'
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - network
+
+
+
+  api_gateway:
+    build:
+      context: ./api-gateway/
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: on-failure
+    ports:
+      - ${GATEWAY_PORT}:${GATEWAY_PORT}
+    networks:
+      - network
+
+networks:
+  network:
+    driver: bridge
