@@ -24,7 +24,7 @@ func main() {
 	// Initialize logger
 	storeLogger := log.New(os.Stdout, "[user-store] ", log.LstdFlags)
 
-	taskRepository, err := repositories.Insert(timeoutContext, storeLogger)
+	taskRepository, err := repositories.NewTaskRepo (timeoutContext, storeLogger)
 	handleErr(err)
 
 	taskService, err := services.NewTaskService(taskRepository)
