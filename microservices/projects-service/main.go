@@ -12,78 +12,52 @@ import (
 	"project-management-app/microservices/projects-service/repositories"
 	"project-management-app/microservices/projects-service/services"
 
-	gorillaHandlers "github.com/gorilla/handlers"
+
 	"github.com/gorilla/mux"
 )
 
 func main() {
 	// Set up a timeout context
+
+	address := ":8000" // Zamenite port brojem koji vam odgovara
+
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	// Initialize logger
-	storeLogger := log.New(os.Stdout, "[user-store] ", log.LstdFlags)
+	storeLogger := log.New(os.Stdout, "[projects-store] ", log.LstdFlags)
 
 	projectRepository, err := repositories.New(timeoutContext, storeLogger)
 	handleErr(err)
 
-	projectService, err := services.NewProjectService(projectRepository)
-	handleErr(err)
+	projectService := services.NewUserService(projectRepository)
 
-	projectHandler, err := handlers.NewprojectHandler(projectService)
-	handleErr(err)
+	projectHandler := handlers.NewprojectHandler(projectService, projectRepository)
 
 	// Set up the router
 	router := mux.NewRouter()
 	router.Use(projectHandler.MiddlewareContentTypeSet)
 
-	// GET subrouter
-	// getRouter := router.Methods(http.MethodGet).Subrouter()
-	// // Dodajemo GET rute ovde
-	// getRouter.HandleFunc("/users", userHandler.GetAllUsers) // Primer rute za dohvat svih korisnika (ako je potrebno)
-
-	// POST subrouter
 	getRouter := router.Methods(http.MethodGet).Subrouter()
-	postRouter := router.Methods(http.MethodPost).Subrouter()
-
-	// GET ruta za dohvat svih projekata
 	getRouter.HandleFunc("/projects", projectHandler.GetAll).Methods("GET")
 
-	// POST ruta za kreiranje novog projekta
+	postRouter := router.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/projects", projectHandler.Create).Methods("POST")
+	postRouter.Use(projectHandler.ProjectContextMiddleware)
 
-	// PATCH subrouter
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
+	patchRouter.HandleFunc("/projects/{id}/addMember", projectHandler.AddMember).Methods("PATCH")
 
-	// Middleware za deserializaciju korisničkih podataka, primenjen samo na PATCH i POST rute gde je potrebno
-	patchRouter.Use(projectHandler.ProjectContextMiddleware)
 
-	cors := gorillaHandlers.CORS(
-		gorillaHandlers.AllowedOrigins([]string{"*"}),
-		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
-		gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
-	)
+	
 
-	// Set up the server
-	port := os.Getenv("PORT")
-	if len(port) == 0 {
-		port = "8080"
-	}
+	
 	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      cors(router),
-		IdleTimeout:  120 * time.Second,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		Handler: router,
+		Addr:    address,
 	}
+	log.Fatal(server.ListenAndServe())
 
-	// Start the server in a goroutine
-	go func() {
-		log.Println("Server listening on port", port)
-		if err := server.ListenAndServe(); err != nil {
-			log.Fatal(err)
-		}
-	}()
 
 	// Set up signal handling for graceful shutdown
 	sigCh := make(chan os.Signal, 1)
@@ -108,3 +82,4 @@ func handleErr(err error) {
 		log.Fatalln(err)
 	}
 }
+

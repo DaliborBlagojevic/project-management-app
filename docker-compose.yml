@@ -1,96 +1,165 @@
-version: "3.1"
+version: "3.8"
 
 services:
+
   # Users service
-  users-server:
+  users-service:
+    image: users-service
+    hostname: ${USERS_SERVICE_HOST}
     build:
-      context: ./users-service
+      context: ./microservices/users-service/
       dockerfile: Dockerfile
     restart: always
-    container_name: "user-server"
-    hostname: "user-server"
-    # Mapping ports
-    ports:
-      - 8080:8080
     environment:
-      - PORT=8080
-      - MONGO_DB_URI=mongodb://root:pass@mongo:27017
+      HOST: ${USERS_SERVICE_HOST}
+      PORT: ${USERS_SERVICE_PORT}
+      DB_HOST: ${USERS_DB_HOST}
+      DB_PORT: ${USERS_DB_PORT}
+      DB_USER: ${USERS_DB_USER}
+      DB_PASS: ${USERS_DB_PASS}
+      DB_NAME: ${USERS_DB_NAME}
+      MONGO_DB_URI: ${USERS_MONGO_DB_URI}
     depends_on:
-      mongo:
-        condition: service_healthy
+      - users-db
+    networks:
+      - network
 
   # Projects service
-  projects-server:
+  projects-service:
+    image: projects-service
+    hostname: ${PROJECTS_SERVICE_HOST}
     build:
-      context: ./projects-service
+      context: ./microservices/projects-service/
       dockerfile: Dockerfile
     restart: always
-    container_name: "project-server"
-    hostname: "project-server"
-    # Mapping ports
-    ports:
-      - 8082:8082
     environment:
-      - PORT=8082
-      - MONGO_DB_URI=mongodb://root:pass@mongo:27017
+      HOST: ${PROJECTS_SERVICE_HOST}
+      PORT: ${PROJECTS_SERVICE_PORT}
+      DB_HOST: ${PROJECTS_DB_HOST}
+      DB_PORT: ${PROJECTS_DB_PORT}
+      DB_USER: ${PROJECTS_DB_USER}
+      DB_PASS: ${PROJECTS_DB_PASS}
+      DB_NAME: ${PROJECTS_DB_NAME}
+      MONGO_DB_URI: ${PROJECTS_MONGO_DB_URI}
     depends_on:
-      mongo:
-        condition: service_healthy
+      - projects-db
+    networks:
+      - network
 
-        # Task service
-  task-server:
+  # Tasks service
+  tasks-service:
+    image: tasks-service
+    hostname: ${TASKS_SERVICE_HOST}
     build:
-      context: ./task-service
+      context: ./microservices/tasks-service/
       dockerfile: Dockerfile
     restart: always
-    container_name: "task-server"
-    hostname: "task-server"
-    # Mapping ports
-    ports:
-      - 8084:8084
     environment:
-      - PORT=8084
-      - MONGO_DB_URI=mongodb://root:pass@mongo:27017
+      HOST: ${TASKS_SERVICE_HOST}
+      PORT: ${TASKS_SERVICE_PORT}
+      DB_HOST: ${TASKS_DB_HOST}
+      DB_PORT: ${TASKS_DB_PORT}
+      DB_USER: ${TASKS_DB_USER}
+      DB_PASS: ${TASKS_DB_PASS}
+      DB_NAME: ${TASKS_DB_NAME}
+      MONGO_DB_URI: ${TASKS_MONGO_DB_URI}
     depends_on:
-      mongo:
-        condition: service_healthy
+      - tasks-db
+    networks:
+      - network
 
-  # MongoDB
-  mongo:
+  # Users MongoDB
+  users-db:
     image: mongo
-    restart: always
-    ports:
-      - "27017:27017"
+    container_name: users-db
+    hostname: ${USERS_DB_HOST}
+    restart: on-failure
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: pass
-      MONGO_INITDB_DATABASE: mongoDemo
+      MONGO_INITDB_ROOT_USERNAME: ${USERS_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${USERS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${USERS_DB_NAME}
+    networks:
+      - network
+
+
+
+
+
+  # Projects MongoDB
+  projects-db:
+    image: mongo
+    container_name: projects-db
+    hostname: ${PROJECTS_DB_HOST}
+    restart: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${PROJECTS_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${PROJECTS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${PROJECTS_DB_NAME}
     healthcheck:
       test: echo 'db.runCommand("ping").ok'
       interval: 10s
       timeout: 10s
       retries: 10
-    volumes:
-      - mongo_store:/data/db
+    networks:
+      - network
 
-  # MongoExpress for database management
-  mongo-express:
-    image: mongo-express
-    restart: always
+  # Tasks MongoDB
+  tasks-db:
+    image: mongo
+    container_name: tasks-db
+    hostname: ${TASKS_DB_HOST}
+    restart: on-failure
     environment:
-      - ME_CONFIG_MONGODB_SERVER=mongo
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=pass
-      - ME_CONFIG_BASICAUTH_USERNAME=admin
-      - ME_CONFIG_BASICAUTH_PASSWORD=admin
-    depends_on:
-      mongo:
-        condition: service_healthy
-    ports:
-      - "8081:8081"
-    volumes:
-      - mong_express_data:/data/db
+      MONGO_INITDB_ROOT_USERNAME: ${TASKS_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${TASKS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${TASKS_DB_NAME}
+    networks:
+      - network
 
-volumes:
-  mongo_store:
-  mong_express_data:
+
+  # # Mongo Express for Users DB
+  # mongo-express-users:
+  #   image: mongo-express
+  #   container_name: mongo-express-users
+  #   restart: always
+  #   environment:
+  #     ME_CONFIG_MONGODB_ADMINUSERNAME: ${USERS_DB_USER}
+  #     ME_CONFIG_MONGODB_ADMINPASSWORD: ${USERS_DB_PASS}
+  #     ME_CONFIG_MONGODB_SERVER: users-db
+  #   ports:
+  #     - "8081:8081"
+  #   depends_on:
+  #     - users-db
+  #   networks:
+  #     - network
+
+  # # Mongo Express for Projects DB
+  # mongo-express-projects:
+  #   image: mongo-express
+  #   container_name: mongo-express-projects
+  #   restart: always
+  #   environment:
+  #     ME_CONFIG_MONGODB_ADMINUSERNAME: ${PROJECTS_DB_USER}
+  #     ME_CONFIG_MONGODB_ADMINPASSWORD: ${USERS_DB_PASS}
+  #     ME_CONFIG_MONGODB_SERVER: projects-db
+  #   ports:
+  #     - "8082:8081"
+  #   depends_on:
+  #     - projects-db
+  #   networks:
+  #     - network
+
+  api_gateway:
+    build:
+      context: ./api-gateway/
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: on-failure
+    ports:
+      - ${GATEWAY_PORT}:${GATEWAY_PORT}
+    networks:
+      - network
+
+networks:
+  network:
+    driver: bridge
