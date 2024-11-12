@@ -4,13 +4,15 @@ import "errors"
 
 var (
 	errConnectionNotFound      error = errors.New("connection not found")
-	errConnectionAlreadyExists error = errors.New("connection already exists")
+	errConnectionAlreadyExists error = errors.New("user already exists")
 	errForeignConnection       error = errors.New("not a user's connection")
 	errPostNotFound            error = errors.New("Post not found")
 	errUserNotFound            error = errors.New("user not found")
 	errInvalidCredentials      error = errors.New("incorrect username or password")
 	errInvalidToken            error = errors.New("token invalid")
 	errUnauthorized            error = errors.New("unauthorized")
+	errUserAlreadyExists		error = errors.New("User with the given username already exists")
+	errCodeExpired				error = errors.New("Your activation code has expired or is invalid")
 )
 
 func ErrConnectionNotFound() error {
@@ -43,4 +45,13 @@ func ErrInvalidToken() error {
 
 func ErrUnauthorized() error {
 	return errUnauthorized
+}
+
+
+func ErrUserAlreadyExists() error {
+	return errUserAlreadyExists
+}
+
+func ErrCodeExpired() error {
+	return errCodeExpired
 }

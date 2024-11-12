@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,7 +13,7 @@ import (
 	"project-management-app/microservices/projects-service/repositories"
 	"project-management-app/microservices/projects-service/services"
 
-	gorillaHandlers "github.com/gorilla/handlers"
+
 	"github.com/gorilla/mux"
 )
 
@@ -20,6 +21,8 @@ func main() {
 	// Set up a timeout context
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	config := loadConfig()
 
 	// Initialize logger
 	storeLogger := log.New(os.Stdout, "[user-store] ", log.LstdFlags)
@@ -37,53 +40,28 @@ func main() {
 	router := mux.NewRouter()
 	router.Use(projectHandler.MiddlewareContentTypeSet)
 
-	// GET subrouter
-	// getRouter := router.Methods(http.MethodGet).Subrouter()
-	// // Dodajemo GET rute ovde
-	// getRouter.HandleFunc("/users", userHandler.GetAllUsers) // Primer rute za dohvat svih korisnika (ako je potrebno)
-
-	// POST subrouter
 	getRouter := router.Methods(http.MethodGet).Subrouter()
 	postRouter := router.Methods(http.MethodPost).Subrouter()
 
-	// GET ruta za dohvat svih projekata
 	getRouter.HandleFunc("/projects", projectHandler.GetAll).Methods("GET")
 
-	// POST ruta za kreiranje novog projekta
 	postRouter.HandleFunc("/projects", projectHandler.Create).Methods("POST")
 
-	// PATCH subrouter
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
 
 	// Middleware za deserializaciju korisničkih podataka, primenjen samo na PATCH i POST rute gde je potrebno
 	patchRouter.Use(projectHandler.ProjectContextMiddleware)
 
-	cors := gorillaHandlers.CORS(
-		gorillaHandlers.AllowedOrigins([]string{"*"}),
-		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
-		gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
-	)
 
-	// Set up the server
-	port := os.Getenv("PORT")
-	if len(port) == 0 {
-		port = "8080"
-	}
+	
+
+	
 	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      cors(router),
-		IdleTimeout:  120 * time.Second,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		Handler: router,
+		Addr:    config["address"],
 	}
+	log.Fatal(server.ListenAndServe())
 
-	// Start the server in a goroutine
-	go func() {
-		log.Println("Server listening on port", port)
-		if err := server.ListenAndServe(); err != nil {
-			log.Fatal(err)
-		}
-	}()
 
 	// Set up signal handling for graceful shutdown
 	sigCh := make(chan os.Signal, 1)
@@ -102,9 +80,29 @@ func main() {
 	log.Println("Server stopped")
 }
 
+func loadConfig() map[string]string {
+	config := make(map[string]string)
+	config["host"] = os.Getenv("HOST")
+	config["port"] = os.Getenv("PORT")
+	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
+	
+	// Adding missing environment variables
+	config["db_host"] = os.Getenv("DB_HOST")
+	config["db_port"] = os.Getenv("DB_PORT")
+	config["db_user"] = os.Getenv("DB_USER")
+	config["db_pass"] = os.Getenv("DB_PASS")
+	config["db_name"] = os.Getenv("DB_NAME")
+	config["mongo_db_uri"] = os.Getenv("MONGO_DB_URI")
+	
+	return config
+}
+
+
+
 // handleErr is a helper function for error handling
 func handleErr(err error) {
 	if err != nil {
 		log.Fatalln(err)
 	}
 }
+

@@ -57,7 +57,7 @@ func (s ProjectService) GetAll() (domain.Projects, error) {
 
 func (s *ProjectService) GetUser(username string) (domain.User, error) {
 
-	url := fmt.Sprintf("http://user-server:8080/users/%s", username)
+	url := fmt.Sprintf("http://users-service:8000/api/users/users/%s", username)
 
 	resp, err := http.Get(url)
 	if err != nil {
