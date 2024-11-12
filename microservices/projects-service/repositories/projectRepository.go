@@ -163,7 +163,7 @@ func (ur *ProjectRepo) GetById(id string) (*domain.Project, error) {
 }
 
 func (ur *ProjectRepo) getCollection() *mongo.Collection {
-	projectDatabase := ur.cli.Database("mongoDemo")
+	projectDatabase := ur.cli.Database("projects")
 	projectsCollection := projectDatabase.Collection("projects")
 	return projectsCollection
 }
@@ -183,7 +183,7 @@ func (pr *ProjectRepo) Create(project *domain.Project) error {
 }
 
 func GetUserById(id string) (domain.User, error) {
-	url := fmt.Sprintf("http://user-server:8080/users/id/%s", id)
+	url := fmt.Sprintf("http://users-service:8000/users/id/%s", id)
 
 	resp, err := http.Get(url)
 	if err != nil {

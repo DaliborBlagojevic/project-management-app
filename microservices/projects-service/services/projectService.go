@@ -30,7 +30,7 @@ func (s ProjectService) AddMember(projectId string, user domain.User) error {
 
 func (s *ProjectService) GetUser(username string) (domain.User, error) {
 
-	url := fmt.Sprintf("http://users-service:8000/api/users/users/%s", username)
+	url := fmt.Sprintf("http://users-service:8000/users/%s", username)
 
 	resp, err := http.Get(url)
 	if err != nil {

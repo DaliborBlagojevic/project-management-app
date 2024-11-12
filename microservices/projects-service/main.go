@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -19,13 +18,14 @@ import (
 
 func main() {
 	// Set up a timeout context
+
+	address := ":8000" // Zamenite port brojem koji vam odgovara
+
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	config := loadConfig()
-
 	// Initialize logger
-	storeLogger := log.New(os.Stdout, "[user-store] ", log.LstdFlags)
+	storeLogger := log.New(os.Stdout, "[projects-store] ", log.LstdFlags)
 
 	projectRepository, err := repositories.New(timeoutContext, storeLogger)
 	handleErr(err)
@@ -54,7 +54,7 @@ func main() {
 	
 	server := &http.Server{
 		Handler: router,
-		Addr:    config["address"],
+		Addr:    address,
 	}
 	log.Fatal(server.ListenAndServe())
 
@@ -75,25 +75,6 @@ func main() {
 	}
 	log.Println("Server stopped")
 }
-
-func loadConfig() map[string]string {
-	config := make(map[string]string)
-	config["host"] = os.Getenv("HOST")
-	config["port"] = os.Getenv("PORT")
-	config["address"] = fmt.Sprintf(":%s", os.Getenv("PORT"))
-	
-	// Adding missing environment variables
-	config["db_host"] = os.Getenv("DB_HOST")
-	config["db_port"] = os.Getenv("DB_PORT")
-	config["db_user"] = os.Getenv("DB_USER")
-	config["db_pass"] = os.Getenv("DB_PASS")
-	config["db_name"] = os.Getenv("DB_NAME")
-	config["mongo_db_uri"] = os.Getenv("MONGO_DB_URI")
-	
-	return config
-}
-
-
 
 // handleErr is a helper function for error handling
 func handleErr(err error) {

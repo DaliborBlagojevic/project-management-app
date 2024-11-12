@@ -67,8 +67,8 @@ services:
     restart: on-failure
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${PROJECTS_DB_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${USERS_DB_PASS}
-      MONGO_INITDB_DATABASE: ${USERS_DB_NAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${PROJECTS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${PROJECTS_DB_NAME}
     healthcheck:
       test: echo 'db.runCommand("ping").ok'
       interval: 10s
@@ -77,7 +77,37 @@ services:
     networks:
       - network
 
+  # # Mongo Express for Users DB
+  # mongo-express-users:
+  #   image: mongo-express
+  #   container_name: mongo-express-users
+  #   restart: always
+  #   environment:
+  #     ME_CONFIG_MONGODB_ADMINUSERNAME: ${USERS_DB_USER}
+  #     ME_CONFIG_MONGODB_ADMINPASSWORD: ${USERS_DB_PASS}
+  #     ME_CONFIG_MONGODB_SERVER: users-db
+  #   ports:
+  #     - "8081:8081"
+  #   depends_on:
+  #     - users-db
+  #   networks:
+  #     - network
 
+  # # Mongo Express for Projects DB
+  # mongo-express-projects:
+  #   image: mongo-express
+  #   container_name: mongo-express-projects
+  #   restart: always
+  #   environment:
+  #     ME_CONFIG_MONGODB_ADMINUSERNAME: ${PROJECTS_DB_USER}
+  #     ME_CONFIG_MONGODB_ADMINPASSWORD: ${USERS_DB_PASS}
+  #     ME_CONFIG_MONGODB_SERVER: projects-db
+  #   ports:
+  #     - "8082:8081"
+  #   depends_on:
+  #     - projects-db
+  #   networks:
+  #     - network
 
   api_gateway:
     build:
