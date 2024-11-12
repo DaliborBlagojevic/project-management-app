@@ -46,6 +46,28 @@ services:
     networks:
       - network
 
+  # Tasks service
+  tasks-service:
+    image: tasks-service
+    hostname: ${TASKS_SERVICE_HOST}
+    build:
+      context: ./microservices/tasks-service/
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      HOST: ${TASKS_SERVICE_HOST}
+      PORT: ${TASKS_SERVICE_PORT}
+      DB_HOST: ${TASKS_DB_HOST}
+      DB_PORT: ${TASKS_DB_PORT}
+      DB_USER: ${TASKS_DB_USER}
+      DB_PASS: ${TASKS_DB_PASS}
+      DB_NAME: ${TASKS_DB_NAME}
+      MONGO_DB_URI: ${TASKS_MONGO_DB_URI}
+    depends_on:
+      - tasks-db
+    networks:
+      - network
+
   # Users MongoDB
   users-db:
     image: mongo
@@ -58,6 +80,10 @@ services:
       MONGO_INITDB_DATABASE: ${USERS_DB_NAME}
     networks:
       - network
+
+
+
+
 
   # Projects MongoDB
   projects-db:
@@ -76,6 +102,20 @@ services:
       retries: 10
     networks:
       - network
+
+  # Tasks MongoDB
+  tasks-db:
+    image: mongo
+    container_name: tasks-db
+    hostname: ${TASKS_DB_HOST}
+    restart: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${TASKS_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${TASKS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${TASKS_DB_NAME}
+    networks:
+      - network
+
 
   # # Mongo Express for Users DB
   # mongo-express-users:
