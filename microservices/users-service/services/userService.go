@@ -73,3 +73,8 @@ func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	return string(bytes), err
 }
+func (s *UserService) GetAvailableMembers(projectId string) ([]map[string]interface{}, error) {
+	return s.users.GetAvailableMembers(projectId)
+}
+
+

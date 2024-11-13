@@ -46,6 +46,28 @@ services:
     networks:
       - network
 
+  # Tasks service
+  tasks-service:
+    image: tasks-service
+    hostname: ${TASKS_SERVICE_HOST}
+    build:
+      context: ./microservices/tasks-service/
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      HOST: ${TASKS_SERVICE_HOST}
+      PORT: ${TASKS_SERVICE_PORT}
+      DB_HOST: ${TASKS_DB_HOST}
+      DB_PORT: ${TASKS_DB_PORT}
+      DB_USER: ${TASKS_DB_USER}
+      DB_PASS: ${TASKS_DB_PASS}
+      DB_NAME: ${TASKS_DB_NAME}
+      MONGO_DB_URI: ${TASKS_MONGO_DB_URI}
+    depends_on:
+      - tasks-db
+    networks:
+      - network
+
   # Users MongoDB
   users-db:
     image: mongo
@@ -59,6 +81,10 @@ services:
     networks:
       - network
 
+
+
+
+
   # Projects MongoDB
   projects-db:
     image: mongo
@@ -67,8 +93,8 @@ services:
     restart: on-failure
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${PROJECTS_DB_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${USERS_DB_PASS}
-      MONGO_INITDB_DATABASE: ${USERS_DB_NAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${PROJECTS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${PROJECTS_DB_NAME}
     healthcheck:
       test: echo 'db.runCommand("ping").ok'
       interval: 10s
@@ -77,7 +103,51 @@ services:
     networks:
       - network
 
+  # Tasks MongoDB
+  tasks-db:
+    image: mongo
+    container_name: tasks-db
+    hostname: ${TASKS_DB_HOST}
+    restart: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${TASKS_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${TASKS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${TASKS_DB_NAME}
+    networks:
+      - network
 
+
+  # # Mongo Express for Users DB
+  # mongo-express-users:
+  #   image: mongo-express
+  #   container_name: mongo-express-users
+  #   restart: always
+  #   environment:
+  #     ME_CONFIG_MONGODB_ADMINUSERNAME: ${USERS_DB_USER}
+  #     ME_CONFIG_MONGODB_ADMINPASSWORD: ${USERS_DB_PASS}
+  #     ME_CONFIG_MONGODB_SERVER: users-db
+  #   ports:
+  #     - "8081:8081"
+  #   depends_on:
+  #     - users-db
+  #   networks:
+  #     - network
+
+  # # Mongo Express for Projects DB
+  # mongo-express-projects:
+  #   image: mongo-express
+  #   container_name: mongo-express-projects
+  #   restart: always
+  #   environment:
+  #     ME_CONFIG_MONGODB_ADMINUSERNAME: ${PROJECTS_DB_USER}
+  #     ME_CONFIG_MONGODB_ADMINPASSWORD: ${USERS_DB_PASS}
+  #     ME_CONFIG_MONGODB_SERVER: projects-db
+  #   ports:
+  #     - "8082:8081"
+  #   depends_on:
+  #     - projects-db
+  #   networks:
+  #     - network
 
   api_gateway:
     build:
