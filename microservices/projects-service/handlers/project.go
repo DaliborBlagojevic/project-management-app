@@ -25,6 +25,13 @@ func NewprojectHandler(s *services.ProjectService, r *repositories.ProjectRepo) 
 func (p *ProjectHandler) Create(rw http.ResponseWriter, h *http.Request) {
 	project := h.Context().Value(KeyProduct{}).(*domain.Project)
 	p.repo.Create(project)
+	err := project.ToJSON(rw)
+	if err != nil {
+		http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
+		log.Fatal("Unable to convert to json :", err)
+		return
+	}
+
 	rw.WriteHeader(http.StatusCreated)
 }
 
