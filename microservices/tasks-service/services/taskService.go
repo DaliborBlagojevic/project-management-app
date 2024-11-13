@@ -3,18 +3,17 @@ package services
 import (
 	"errors"
 	"project-management-app/microservices/projects-service/domain"
+	"project-management-app/microservices/projects-service/repositories"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type TaskService struct {
-	tasks domain.TaskRepository
+	tasks *repositories.TaskRepo
 }
 
-func NewTaskService(tasks domain.TaskRepository) (TaskService, error) {
-	return TaskService{
-		tasks: tasks,
-	}, nil
+func NewTaskService(tasks *repositories.TaskRepo) *TaskService {
+	return &TaskService{tasks}
 }
 
 

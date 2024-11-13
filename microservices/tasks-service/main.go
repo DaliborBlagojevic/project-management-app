@@ -12,11 +12,12 @@ import (
 	"project-management-app/microservices/projects-service/repositories"
 	"project-management-app/microservices/projects-service/services"
 
-	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
 func main() {
+
+	address := ":8000"
 	// Set up a timeout context
 	timeoutContext, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -27,20 +28,18 @@ func main() {
 	taskRepository, err := repositories.NewTaskRepo (timeoutContext, storeLogger)
 	handleErr(err)
 
-	taskService, err := services.NewTaskService(taskRepository)
-	handleErr(err)
+	taskService := services.NewTaskService(taskRepository)
 
-	taskHandler, err := handlers.NewTaskHandler(taskService)
-	handleErr(err)
+	taskHandler := handlers.NewTaskHandler(taskService, taskRepository)
 
 	// Set up the router
 	router := mux.NewRouter()
 	router.Use(taskHandler.MiddlewareContentTypeSet)
 
-	// GET subrouter
-	// getRouter := router.Methods(http.MethodGet).Subrouter()
-	// // Dodajemo GET rute ovde
-	// getRouter.HandleFunc("/users", userHandler.GetAllUsers) // Primer rute za dohvat svih korisnika (ako je potrebno)
+
+	getRouter := router.Methods(http.MethodGet).Subrouter()
+	// Dodajemo GET rute ovde
+	getRouter.HandleFunc("/tasks", taskHandler.GetAllTasksHandler(taskRepository)) // Primer rute za dohvat svih korisnika (ako je potrebno)
 
 	// POST subrouter
 	//getRouter := router.Methods(http.MethodGet).Subrouter()
@@ -59,33 +58,13 @@ func main() {
 	// Middleware za deserializaciju korisničkih podataka, primenjen samo na PATCH i POST rute gde je potrebno
 	patchRouter.Use(taskHandler.ProjectContextMiddleware)
 
-	cors := gorillaHandlers.CORS(
-		gorillaHandlers.AllowedOrigins([]string{"*"}),
-		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
-		gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
-		gorillaHandlers.AllowCredentials(),
-	)
 
-	// Set up the server
-	port := os.Getenv("PORT")
-	if len(port) == 0 {
-		port = "8080"
-	}
+
 	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      cors(router),
-		IdleTimeout:  120 * time.Second,
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		Handler: router,
+		Addr:    address,
 	}
-
-	// Start the server in a goroutine
-	go func() {
-		log.Println("Server listening on port", port)
-		if err := server.ListenAndServe(); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	log.Fatal(server.ListenAndServe())
 
 	// Set up signal handling for graceful shutdown
 	sigCh := make(chan os.Signal, 1)

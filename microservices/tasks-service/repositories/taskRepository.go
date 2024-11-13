@@ -21,6 +21,7 @@ type TaskRepo struct {
 	logger     *log.Logger
 }
 
+
 // NewTaskRepo kreira novu instancu TaskRepo i povezuje se sa MongoDB bazom
 func NewTaskRepo(ctx context.Context, logger *log.Logger) (*TaskRepo, error) {
 	dbURI := os.Getenv("MONGO_DB_URI")
@@ -52,6 +53,8 @@ func NewTaskRepo(ctx context.Context, logger *log.Logger) (*TaskRepo, error) {
 	}, nil
 }
 
+
+
 func (pr *TaskRepo) FindByName(name string) (*domain.Task, error) {
     ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
     defer cancel()
@@ -69,6 +72,41 @@ func (pr *TaskRepo) FindByName(name string) (*domain.Task, error) {
 
     return &task, nil
 }
+
+// GetAll vraća sve zadatke iz MongoDB kolekcije
+func (pr *TaskRepo) GetAll() ([]domain.Task, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Kreiramo prazan slice gde ćemo sačuvati sve zadatke
+	var tasks []domain.Task
+
+	// Koristimo Find za dohvaćanje svih dokumenata
+	cursor, err := pr.collection.Find(ctx, bson.M{})
+	if err != nil {
+		pr.logger.Println("Greška prilikom dohvaćanja zadataka:", err)
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	// Iteriramo kroz rezultate i dekodiramo svaki zadatak
+	for cursor.Next(ctx) {
+		var task domain.Task
+		if err := cursor.Decode(&task); err != nil {
+			pr.logger.Println("Greška prilikom dekodiranja zadatka:", err)
+			return nil, err
+		}
+		tasks = append(tasks, task)
+	}
+
+	if err := cursor.Err(); err != nil {
+		pr.logger.Println("Greška tokom iteracije kroz kursor:", err)
+		return nil, err
+	}
+
+	return tasks, nil
+}
+
 
 // Insert umeće novi zadatak u MongoDB kolekciju
 func (pr *TaskRepo) Insert(task domain.Task) (domain.Task, error) {
