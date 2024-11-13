@@ -9,10 +9,9 @@ import (
 )
 
 type User struct {
-	Id       primitive.ObjectID `bson:"_id,omitempty" json:"Id"`
-	Username string             `bson:"username" json:"Username"`
-	Name     string             `bson:"name" json:"Name"`
-	Surname  string             `bson:"surname" json:"Surname"`
+	Username string `bson:"username" json:"Username"`
+	Name     string `bson:"name" json:"Name"`
+	Surname  string `bson:"surname" json:"Surname"`
 }
 
 type Users []*User
