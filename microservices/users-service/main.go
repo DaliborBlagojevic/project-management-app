@@ -52,7 +52,7 @@ func main() {
 	getRouter.HandleFunc("/users/{username}", userHandler.GetUserByUsername)
 	getRouter.HandleFunc("/users/id/{id}", userHandler.GetUserById)
 
-	patchRouter := router.Methods(http.MethodPatch).Subrouter()
+	patchRouter := privateRouter.Methods(http.MethodPatch).Subrouter()
 	patchRouter.HandleFunc("/users/{uuid}", userHandler.PatchUser)
 	patchRouter.Use(userHandler.MiddlewareUserDeserialization)
 
