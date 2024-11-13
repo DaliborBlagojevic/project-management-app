@@ -1,6 +1,10 @@
 package domain
 
 import (
+
+	"encoding/json"
+	"io"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -13,6 +17,14 @@ type Task struct {
 }
 
 
+type Tasks []*Task
+
+func (t *Tasks) ToJSON(w io.Writer) error {
+	encoder := json.NewEncoder(w)
+	return encoder.Encode(t)
+}
+
+
 type Status int
 
 const (
@@ -20,9 +32,3 @@ const (
 	FINISHED   Status = iota + 2
 	
 )
-
-
-type TaskRepository interface {
-	Insert(task Task) (Task, error)
-	FindByName(name string) (*Task, error)
-}

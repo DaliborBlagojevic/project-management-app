@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"project-management-app/microservices/projects-service/domain"
+	"project-management-app/microservices/projects-service/repositories"
 	"project-management-app/microservices/projects-service/services"
 	"strconv"
 
@@ -13,13 +15,12 @@ import (
 type KeyTask struct{}
 
 type TaskHandler struct {
-	tasks services.TaskService
+	tasks *services.TaskService
+	repo  *repositories.TaskRepo
 }
 
-func NewTaskHandler(tasks services.TaskService) (TaskHandler, error) {
-	return TaskHandler{
-		tasks: tasks,
-	}, nil
+func NewTaskHandler(s *services.TaskService, r *repositories.TaskRepo) *TaskHandler {
+	return &TaskHandler{s, r}
 }
 
 // Create - Kreira novi zadatak
@@ -67,6 +68,22 @@ func (h TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 
+func (h TaskHandler) GetAllTasksHandler(taskRepo *repositories.TaskRepo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tasks, err := taskRepo.GetAll()
+		if err != nil {
+			http.Error(w, "Greška prilikom dohvaćanja zadataka", http.StatusInternalServerError)
+			return
+		}
+
+		// Konvertujemo rezultate u JSON i šaljemo odgovor
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(tasks); err != nil {
+			http.Error(w, "Greška prilikom slanja odgovora", http.StatusInternalServerError)
+			return
+		}
+	}
+}
 
 
 func (u *TaskHandler) MiddlewareContentTypeSet(next http.Handler) http.Handler {
