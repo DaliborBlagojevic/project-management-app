@@ -32,13 +32,20 @@ func main() {
 
 	// Initialize user service
 	userService := services.NewUserService(userRepository)
-
+	authService := services.NewAuthService(userRepository)
 	// Initialize user handler
 	userHandler := handlers.NewUserHandler(userService, userRepository)
+	authHandler := handlers.NewAuthHandler(authService)
 
 	// Set up the router
 	router := mux.NewRouter()
 	router.Use(userHandler.MiddlewareContentTypeSet)
+
+	privateRouter := router.NewRoute().Subrouter()
+	privateRouter.Use(authHandler.MiddlewareAuth)
+
+	managerRouter := router.NewRoute().Subrouter()
+	managerRouter.Use(authHandler.MiddlewareAuthManager)
 
 	getRouter := router.Methods(http.MethodGet).Subrouter()
 	getRouter.HandleFunc("/users", userHandler.GetAll)
@@ -50,7 +57,9 @@ func main() {
 	patchRouter.HandleFunc("/users/{uuid}", userHandler.PatchUser)
 	patchRouter.Use(userHandler.MiddlewareUserDeserialization)
 
-	router.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
+	postRouter := router.Methods(http.MethodPost).Subrouter()
+	postRouter.HandleFunc("/users", userHandler.Create).Methods(http.MethodPost)
+	postRouter.HandleFunc("/users/auth", authHandler.LogIn).Methods(http.MethodPost)
 
 	log.Println("Users service is running on", address)
 	log.Println("Routes are set up correctly")

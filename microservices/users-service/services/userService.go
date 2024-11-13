@@ -1,13 +1,14 @@
 package services
 
 import (
-
+	"fmt"
 	"log"
 	"project-management-app/microservices/users-service/domain"
 	"project-management-app/microservices/users-service/repositories"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -29,12 +30,16 @@ func (s UserService) Create(username, password, name, surname, email, roleString
 		return domain.User{}, err
 	}
 	if existingUser != nil {
-		return domain.User{}, domain.ErrUserAlreadyExists()
+		return domain.User{}, fmt.Errorf("user with username '%s' already exists", username)
 	}
-
+	hashedPassword, err := HashPassword(password)
+	if err != nil {
+		return domain.User{}, err
+	}
+	// Kreiraj novog korisnika
 	user := domain.User{
 		Username:       username,
-		Password:       password,
+		Password:       hashedPassword,
 		Name:           name,
 		Surname:        surname,
 		Email:          email,
@@ -45,10 +50,6 @@ func (s UserService) Create(username, password, name, surname, email, roleString
 	}
 
 	return s.users.Insert(user)
-}
-
-func (s *UserService) GetAvailableMembers(projectId string) ([]map[string]interface{}, error) {
-	return s.users.GetAvailableMembers(projectId)
 }
 
 func (s *UserService) PeriodicCleanup() {
@@ -67,3 +68,13 @@ func (s *UserService) PeriodicCleanup() {
 		}
 	}
 }
+
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+func (s *UserService) GetAvailableMembers(projectId string) ([]map[string]interface{}, error) {
+	return s.users.GetAvailableMembers(projectId)
+}
+
+

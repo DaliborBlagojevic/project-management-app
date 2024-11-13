@@ -46,14 +46,14 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.users.Create(req.Username, req.Password, req.Name, req.Surname, req.Email, req.Role, activationCode)
-    if err != nil {
-        if errors.Is(err, domain.ErrUserAlreadyExists()) {
-            http.Error(w, "User already exists", http.StatusConflict) // HTTP 409 Conflict
-        } else {
-            http.Error(w, "Error creating user", http.StatusInternalServerError)
-        }
-        return
-    }
+	if err != nil {
+		if errors.Is(err, domain.ErrUserAlreadyExists()) {
+			http.Error(w, "User already exists", http.StatusConflict) // HTTP 409 Conflict
+		} else {
+			http.Error(w, "Error creating user", http.StatusInternalServerError)
+		}
+		return
+	}
 
 	resp := struct {
 		Id             string
@@ -85,7 +85,7 @@ func (h UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *UserHandler) GetUserByUsername(rw http.ResponseWriter, h *http.Request) {
-
+	log.Println("pogodio je user service")
 	vars := mux.Vars(h)
 	username := vars["username"]
 
@@ -179,8 +179,8 @@ func (u *UserHandler) PatchUser(rw http.ResponseWriter, h *http.Request) {
 	err := u.repo.ActivateAccount(id, user)
 	if err != nil {
 		if errors.Is(err, domain.ErrCodeExpired()) {
-            http.Error(rw, err.Error(), http.StatusConflict) // HTTP 409 Conflict
-        }
+			http.Error(rw, err.Error(), http.StatusConflict) // HTTP 409 Conflict
+		}
 		log.Println("Error activating account:", err)
 		http.Error(rw, "Error activating account", http.StatusInternalServerError)
 		return

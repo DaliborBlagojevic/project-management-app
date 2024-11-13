@@ -57,7 +57,7 @@ const (
 )
 
 func (r Role) String() string {
-	return [...]string{"Unauthorized user", "Project manager", "Project member"}[r-1]
+	return [...]string{"UNAUTHORIZED_USER", "PROJECT_MANAGER", "PROJECT_MEMBER"}[r-1]
 }
 func (r Role) EnumIndex() int {
 	return int(r)
@@ -66,11 +66,11 @@ func (r Role) EnumIndex() int {
 // Definiši kao funkciju paketa, a ne kao metodu Role
 func RoleFromString(s string) (Role, error) {
 	switch s {
-	case "Unauthorized user":
+	case "UNAUTHORIZED_USER":
 		return UNAUTHORIZED_USER, nil
-	case "Project manager":
+	case "PROJECT_MANAGER":
 		return PROJECT_MANAGER, nil
-	case "Project member":
+	case "PROJECT_MEMBER":
 		return PROJECT_MEMBER, nil
 	default:
 		return 0, errors.New("invalid role")

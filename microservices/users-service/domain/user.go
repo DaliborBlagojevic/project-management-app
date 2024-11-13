@@ -43,29 +43,40 @@ func (u User) Equals(user User) bool {
 	return u.Id == user.Id
 }
 
+func (u User) MarshalJSON() ([]byte, error) {
+	type Alias User
+
+	return json.Marshal(&struct {
+		Role string `json:"role"`
+		*Alias
+	}{
+		Role:  u.Role.String(),
+		Alias: (*Alias)(&u),
+	})
+}
+
 type Role int
 
 const (
 	UNAUTHORIZED_USER Role = iota + 1
-	PROJECT_MANAGER   Role = iota + 2
-	PROJECT_MEMBER    Role = iota + 3
+	PROJECT_MANAGER
+	PROJECT_MEMBER
 )
 
 func (r Role) String() string {
-	return [...]string{"Unauthorized user", "Project manager", "Project member"}[r-1]
+	return [...]string{"UNAUTHORIZED_USER", "PROJECT_MANAGER", "PROJECT_MEMBER"}[r-1]
 }
 func (r Role) EnumIndex() int {
 	return int(r)
 }
 
-// Definiši kao funkciju paketa, a ne kao metodu Role
 func RoleFromString(s string) (Role, error) {
 	switch s {
-	case "Unauthorized user":
+	case "UNAUTHORIZED_USER":
 		return UNAUTHORIZED_USER, nil
-	case "Project manager":
+	case "PROJECT_MANAGER":
 		return PROJECT_MANAGER, nil
-	case "Project member":
+	case "PROJECT_MEMBER":
 		return PROJECT_MEMBER, nil
 	default:
 		return 0, errors.New("invalid role")
