@@ -53,7 +53,7 @@ func main() {
 	getRouter.HandleFunc("/users/id/{id}", userHandler.GetUserById)
 	getRouter.HandleFunc("/projects/{projectId}/availableMembers", userHandler.GetAvailableMembers)
 
-	patchRouter := privateRouter.Methods(http.MethodPatch).Subrouter()
+	patchRouter := router.Methods(http.MethodPatch).Subrouter()
 	patchRouter.HandleFunc("/users/{uuid}", userHandler.PatchUser)
 	patchRouter.Use(userHandler.MiddlewareUserDeserialization)
 

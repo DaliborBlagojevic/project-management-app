@@ -248,7 +248,6 @@ func (pr *UserRepo) ActivateAccount(uuid string, user *domain.User) error {
 	filter := bson.M{"activationCode": uuid}
 	update := bson.M{"$set": bson.M{
 		"isActive": true,
-		"role": 3,
 		"activationCode": "",
 	}}
 
