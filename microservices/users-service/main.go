@@ -47,12 +47,12 @@ func main() {
 	managerRouter := router.NewRoute().Subrouter()
 	managerRouter.Use(authHandler.MiddlewareAuthManager)
 
-	getRouter := privateRouter.Methods(http.MethodGet).Subrouter()
+	getRouter := router.Methods(http.MethodGet).Subrouter()
 	getRouter.HandleFunc("/users", userHandler.GetAll)
 	getRouter.HandleFunc("/users/{username}", userHandler.GetUserByUsername)
 	getRouter.HandleFunc("/users/id/{id}", userHandler.GetUserById)
 
-	patchRouter := privateRouter.Methods(http.MethodPatch).Subrouter()
+	patchRouter := router.Methods(http.MethodPatch).Subrouter()
 	patchRouter.HandleFunc("/users/{uuid}", userHandler.PatchUser)
 	patchRouter.Use(userHandler.MiddlewareUserDeserialization)
 

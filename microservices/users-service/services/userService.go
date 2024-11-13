@@ -1,7 +1,7 @@
 package services
 
 import (
-
+	"fmt"
 	"log"
 	"project-management-app/microservices/users-service/domain"
 	"project-management-app/microservices/users-service/repositories"
