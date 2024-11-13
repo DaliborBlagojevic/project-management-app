@@ -2,8 +2,11 @@ package repositories
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"project-management-app/microservices/users-service/domain"
 	"time"
@@ -20,7 +23,7 @@ type UserRepo struct {
 	logger *log.Logger
 }
 
-func New(ctx context.Context, logger *log.Logger, ) (*UserRepo, error) {
+func New(ctx context.Context, logger *log.Logger) (*UserRepo, error) {
 	dburi := os.Getenv("MONGO_DB_URI")
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(dburi))
@@ -91,69 +94,106 @@ func (ur *UserRepo) GetAll() (domain.Users, error) {
 	return users, nil
 }
 
-func (ur *UserRepo) GetAvailableMembers(projectId string) ([]map[string]interface{}, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	usersCollection := ur.getCollection()
-	projectsCollection := ur.cli.Database("projects").Collection("projects")
-
-	var users domain.Users
-
-	// Konvertujemo projectId u ObjectID
-	objID, err := primitive.ObjectIDFromHex(projectId)
+func (ur *UserRepo) GetAvailableMembers(projectId string) (domain.Users, error) {
+	// Fetch project from projects service
+	projectMembers, err := ur.fetchProjectMembers(projectId)
 	if err != nil {
 		ur.logger.Println(err)
 		return nil, err
 	}
 
-	// Dohvatamo projekat iz baze podataka
-	var project struct {
-		Members []struct {
-			Id primitive.ObjectID `bson:"_id"`
-		} `bson:"members"`
-	}
-	err = projectsCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&project)
+	// Fetch all users
+	users, err := ur.GetAll()
 	if err != nil {
 		ur.logger.Println(err)
 		return nil, err
 	}
 
-	// Kreiramo mapu članova projekta za brzu proveru
-	memberMap := make(map[primitive.ObjectID]bool)
-	for _, member := range project.Members {
-		memberMap[member.Id] = true
-	}
-
-	// Find all users that are active, with role 3 (member)
-	usersCursor, err := usersCollection.Find(ctx, bson.M{
-		"isActive": true,
-		"role":     3,
-	}, options.Find().SetProjection(bson.M{"_id": 1, "username": 1, "name": 1, "surname": 1}))
-	if err != nil {
-		ur.logger.Println(err)
-		return nil, err
-	}
-	if err = usersCursor.All(ctx, &users); err != nil {
-		ur.logger.Println(err)
-		return nil, err
-	}
-
-	// Filtriraj podatke pre slanja na frontend
-	var userResponses []map[string]interface{}
+	// Log all users fetched from the database
+	ur.logger.Println("All users fetched from the database:")
 	for _, user := range users {
-		// Proveravamo da li korisnik već postoji u listi članova projekta
-		if _, exists := memberMap[user.Id]; !exists {
-			userResponses = append(userResponses, map[string]interface{}{
-				"Id":       user.Id.Hex(),
-				"Username": user.Username,
-				"Name":     user.Name,
-				"Surname":  user.Surname,
-			})
+		ur.logger.Printf("User: %+v\n", user)
+	}
+
+	// Filter users based on role and isActive
+	var filteredUsers domain.Users
+	for _, user := range users {
+		if user.Role == domain.PROJECT_MEMBER && user.IsActive {
+			filteredUsers = append(filteredUsers, user)
 		}
 	}
 
-	return userResponses, nil
+	// If projectMembers is empty, return all users that match the filter
+	if len(projectMembers) == 0 {
+		return filteredUsers, nil
+	}
+
+	// Filter out users who are already members of the project
+	var availableMembers domain.Users
+	for _, user := range filteredUsers {
+		if !projectMembers[user.Username] {
+			availableMembers = append(availableMembers, user)
+		}
+	}
+
+	// Log available members after filtering
+	ur.logger.Println("Available members after filtering:")
+	for _, user := range availableMembers {
+		ur.logger.Printf("User: %+v\n", user)
+	}
+
+	return availableMembers, nil
+}
+
+func (ur *UserRepo) fetchProjectMembers(projectId string) (map[string]bool, error) {
+	url := fmt.Sprintf("http://api-gateway:8000/api/projects/projects/%s", projectId) // Izmenjen URL
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	fmt.Printf("Response status: %s\n", resp.Status) // Log response status
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch project: %s", resp.Status)
+	}
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	// Log the response body
+	fmt.Printf("Response body: %s\n", string(body))
+
+	var projectData struct {
+		Members []struct {
+			Username string `json:"username"`
+		} `json:"members"`
+	}
+	if err := json.Unmarshal(body, &projectData); err != nil {
+		return nil, fmt.Errorf("failed to decode project: %v", err)
+	}
+
+	// Log members
+	if projectData.Members == nil {
+		fmt.Println("Project members are null")
+		projectData.Members = []struct {
+			Username string `json:"username"`
+		}{} // Initialize as empty slice
+	} else {
+		fmt.Printf("Project members: %+v\n", projectData.Members)
+	}
+
+	projectMembers := make(map[string]bool)
+	for _, member := range projectData.Members {
+		projectMembers[member.Username] = true
+	}
+
+	return projectMembers, nil
 }
 
 func (ur *UserRepo) GetById(id string) (*domain.User, error) {
@@ -247,7 +287,7 @@ func (pr *UserRepo) ActivateAccount(uuid string, user *domain.User) error {
 
 	filter := bson.M{"activationCode": uuid}
 	update := bson.M{"$set": bson.M{
-		"isActive": true,
+		"isActive":       true,
 		"activationCode": "",
 	}}
 
@@ -270,30 +310,29 @@ func (pr *UserRepo) ActivateAccount(uuid string, user *domain.User) error {
 	return nil
 }
 
-
 func (ur *UserRepo) RemoveExpiredActivationCodes() error {
-    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-    defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-    usersCollection := ur.getCollection()
+	usersCollection := ur.getCollection()
 
-    // Definiši vreme isteka (2 minuta)
-    expirationTime := time.Now().Add(-1 * time.Minute)
+	// Definiši vreme isteka (2 minuta)
+	expirationTime := time.Now().Add(-1 * time.Minute)
 
-    // Pronađi sve korisnike čiji je `CreatedAt` stariji od 2 minuta
-    filter := bson.M{
-        "createdAt":       bson.M{"$lt": expirationTime},
-        "activationCode": bson.M{"$ne": nil},
-    }
+	// Pronađi sve korisnike čiji je `CreatedAt` stariji od 2 minuta
+	filter := bson.M{
+		"createdAt":      bson.M{"$lt": expirationTime},
+		"activationCode": bson.M{"$ne": nil},
+	}
 
-    update := bson.M{
-        "$unset": bson.M{"activationCode": ""}, // Briši `activationCode`
-    }
+	update := bson.M{
+		"$unset": bson.M{"activationCode": ""}, // Briši `activationCode`
+	}
 
-    _, err := usersCollection.UpdateMany(ctx, filter, update)
-    if err != nil {
-        return fmt.Errorf("failed to remove expired activation codes: %v", err)
-    }
+	_, err := usersCollection.UpdateMany(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("failed to remove expired activation codes: %v", err)
+	}
 
-    return nil
+	return nil
 }

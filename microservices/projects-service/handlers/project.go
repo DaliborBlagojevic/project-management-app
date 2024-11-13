@@ -15,7 +15,7 @@ type KeyProduct struct{}
 
 type ProjectHandler struct {
 	projects *services.ProjectService
-	repo  *repositories.ProjectRepo
+	repo     *repositories.ProjectRepo
 }
 
 func NewprojectHandler(s *services.ProjectService, r *repositories.ProjectRepo) *ProjectHandler {
@@ -39,6 +39,28 @@ func (p *ProjectHandler) GetAll(rw http.ResponseWriter, h *http.Request) {
 	}
 
 	err = projects.ToJSON(rw)
+	if err != nil {
+		http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
+		log.Fatal("Unable to convert to json :", err)
+		return
+	}
+}
+
+func (p *ProjectHandler) GetByID(rw http.ResponseWriter, h *http.Request) {
+	vars := mux.Vars(h)
+	id := vars["id"]
+
+	project, err := p.repo.GetById(id)
+
+	if err != nil {
+		log.Print("Database exception: ", err)
+	}
+
+	if project == nil {
+		return
+	}
+
+	err = project.ToJSON(rw)
 	if err != nil {
 		http.Error(rw, "Unable to convert to json", http.StatusInternalServerError)
 		log.Fatal("Unable to convert to json :", err)
@@ -78,7 +100,6 @@ func (u *ProjectHandler) MiddlewareContentTypeSet(next http.Handler) http.Handle
 		next.ServeHTTP(rw, h)
 	})
 }
-
 
 func (u *ProjectHandler) ProjectContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, h *http.Request) {

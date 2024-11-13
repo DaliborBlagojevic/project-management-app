@@ -49,6 +49,7 @@ func (pr *ProjectRepo) Disconnect(ctx context.Context) error {
 	}
 	return nil
 }
+
 // Check database connection
 func (pr *ProjectRepo) Ping() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -73,7 +74,7 @@ func (pr *ProjectRepo) GetAll() (domain.Projects, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-    projectsCollection := pr.getCollection()
+	projectsCollection := pr.getCollection()
 
 	var projects domain.Projects
 	projectsCursor, err := projectsCollection.Find(ctx, bson.M{})
@@ -133,15 +134,7 @@ func (ur *ProjectRepo) GetById(id string) (*domain.Project, error) {
 
 	projectsCollection := ur.getCollection()
 
-	var project struct {
-		Id         primitive.ObjectID   `bson:"_id,omitempty"`
-		Manager    primitive.ObjectID   `bson:"manager"`
-		Name       string               `bson:"name"`
-		EndDate    time.Time            `bson:"end_date"`
-		MinWorkers int                  `bson:"min_workers,omitempty"`
-		MaxWorkers int                  `bson:"max_workers"`
-		Members    []primitive.ObjectID `bson:"members,omitempty"`
-	}
+	var project domain.Project
 	objID, _ := primitive.ObjectIDFromHex(id)
 	err := projectsCollection.FindOne(ctx, bson.M{"_id": objID}).Decode(&project)
 	if err != nil {
@@ -149,17 +142,7 @@ func (ur *ProjectRepo) GetById(id string) (*domain.Project, error) {
 		return nil, err
 	}
 
-	// Kreiramo Project objekat sa dekodiranim podacima
-	domainProject := &domain.Project{
-		Id:         project.Id,
-		Name:       project.Name,
-		EndDate:    project.EndDate,
-		MinWorkers: project.MinWorkers,
-		MaxWorkers: project.MaxWorkers,
-		Members:    domain.Users{},
-	}
-
-	return domainProject, nil
+	return &project, nil
 }
 
 func (ur *ProjectRepo) getCollection() *mongo.Collection {
@@ -171,7 +154,7 @@ func (ur *ProjectRepo) getCollection() *mongo.Collection {
 func (pr *ProjectRepo) Create(project *domain.Project) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-    projectsCollection := pr.getCollection()
+	projectsCollection := pr.getCollection()
 
 	result, err := projectsCollection.InsertOne(ctx, &project)
 	if err != nil {
@@ -204,5 +187,3 @@ func GetUserById(id string) (domain.User, error) {
 
 	return user, nil
 }
-
-

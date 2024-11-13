@@ -12,7 +12,6 @@ import (
 	"project-management-app/microservices/projects-service/repositories"
 	"project-management-app/microservices/projects-service/services"
 
-
 	"github.com/gorilla/mux"
 )
 
@@ -40,6 +39,7 @@ func main() {
 
 	getRouter := router.Methods(http.MethodGet).Subrouter()
 	getRouter.HandleFunc("/projects", projectHandler.GetAll).Methods("GET")
+	getRouter.HandleFunc("/projects/{id}", projectHandler.GetByID).Methods("GET")
 
 	postRouter := router.Methods(http.MethodPost).Subrouter()
 	postRouter.HandleFunc("/projects", projectHandler.Create).Methods("POST")
@@ -48,16 +48,11 @@ func main() {
 	patchRouter := router.Methods(http.MethodPatch).Subrouter()
 	patchRouter.HandleFunc("/projects/{id}/addMember", projectHandler.AddMember).Methods("PATCH")
 
-
-	
-
-	
 	server := &http.Server{
 		Handler: router,
 		Addr:    address,
 	}
 	log.Fatal(server.ListenAndServe())
-
 
 	// Set up signal handling for graceful shutdown
 	sigCh := make(chan os.Signal, 1)
@@ -82,4 +77,3 @@ func handleErr(err error) {
 		log.Fatalln(err)
 	}
 }
-
