@@ -1,0 +1,196 @@
+services:
+  # Users service
+  users-service:
+    image: users-service
+    hostname: ${USERS_SERVICE_HOST}
+    build:
+      context: ./microservices/users-service/
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      PROJECTS_SERVICE_ADDRESS: ${PROJECTS_SERVICE_ADDRESS}
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
+      HOST: ${USERS_SERVICE_HOST}
+      PORT: ${USERS_SERVICE_PORT}
+      DB_HOST: ${USERS_DB_HOST}
+      DB_PORT: ${USERS_DB_PORT}
+      DB_USER: ${USERS_DB_USER}
+      DB_PASS: ${USERS_DB_PASS}
+      DB_NAME: ${USERS_DB_NAME}
+      MONGO_DB_URI: ${USERS_MONGO_DB_URI}
+      CAPTCHA_SECRET: ${CAPTCHA_SECRET}
+      SECRET_KEY_AUTH: ${SECRET_KEY_AUTH}
+    depends_on:
+      - users-db
+    networks:
+      - network
+
+  # Projects service
+  projects-service:
+    image: projects-service
+    hostname: ${PROJECTS_SERVICE_HOST}
+    build:
+      context: ./microservices/projects-service/
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
+      HOST: ${PROJECTS_SERVICE_HOST}
+      PORT: ${PROJECTS_SERVICE_PORT}
+      DB_HOST: ${PROJECTS_DB_HOST}
+      DB_PORT: ${PROJECTS_DB_PORT}
+      DB_USER: ${PROJECTS_DB_USER}
+      DB_PASS: ${PROJECTS_DB_PASS}
+      DB_NAME: ${PROJECTS_DB_NAME}
+      MONGO_DB_URI: ${PROJECTS_MONGO_DB_URI}
+      SECRET_KEY_AUTH: ${SECRET_KEY_AUTH}
+    depends_on:
+      - projects-db
+    networks:
+      - network
+
+  # Tasks service
+  tasks-service:
+    image: tasks-service
+    hostname: ${TASKS_SERVICE_HOST}
+    build:
+      context: ./microservices/tasks-service/
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      JAEGER_ADDRESS: ${JAEGER_ADDRESS}
+      HOST: ${TASKS_SERVICE_HOST}
+      PORT: ${TASKS_SERVICE_PORT}
+      DB_HOST: ${TASKS_DB_HOST}
+      DB_PORT: ${TASKS_DB_PORT}
+      DB_USER: ${TASKS_DB_USER}
+      DB_PASS: ${TASKS_DB_PASS}
+      DB_NAME: ${TASKS_DB_NAME}
+      MONGO_DB_URI: ${TASKS_MONGO_DB_URI}
+      SECRET_KEY_AUTH: ${SECRET_KEY_AUTH}
+    depends_on:
+      - tasks-db
+    networks:
+      - network
+
+  # Users MongoDB
+  users-db:
+    image: mongo
+    container_name: users-db
+    hostname: ${USERS_DB_HOST}
+    restart: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${USERS_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${USERS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${USERS_DB_NAME}
+    networks:
+      - network
+
+  # Projects MongoDB
+  projects-db:
+    image: mongo
+    container_name: projects-db
+    hostname: ${PROJECTS_DB_HOST}
+    restart: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${PROJECTS_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${PROJECTS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${PROJECTS_DB_NAME}
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok'
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - network
+
+  # Tasks MongoDB
+  tasks-db:
+    image: mongo
+    container_name: tasks-db
+    hostname: ${TASKS_DB_HOST}
+    restart: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${TASKS_DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${TASKS_DB_PASS}
+      MONGO_INITDB_DATABASE: ${TASKS_DB_NAME}
+    networks:
+      - network
+
+  # Cassandra Database
+  cassandra-db:
+    image: cassandra:4
+    container_name: cassandra-db
+    hostname: cassandra-db
+    restart: always
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: "NotificationsCluster"
+      CASSANDRA_DC: "datacenter1"
+      CASSANDRA_RACK: "rack1"
+      CASSANDRA_SEEDS: "cassandra-db"
+      CASSANDRA_START_RPC: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    networks:
+      - network
+
+  notifications-service:
+    image: notifications-service
+    hostname: notifications-service
+    build:
+      context: ./microservices/notification-service/
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      HOST: notifications-service
+      PORT: 8000
+      CASSANDRA_HOST: cassandra-db
+      CASSANDRA_PORT: 9042
+    depends_on:
+      cassandra-db:
+        condition: service_healthy
+    networks:
+      - network
+
+  api_gateway:
+    build:
+      context: ./api-gateway/
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    restart: on-failure
+    ports:
+      - 443:443
+    depends_on:
+      - notifications-service
+    networks:
+      - network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "6831:6831/udp"
+      - "16686:16686"
+    networks:
+      - network
+
+  collector:
+    image: otel/opentelemetry-collector:0.69.0
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
+    volumes:
+      - ./api-gateway/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    networks:
+      - network
+
+networks:
+  network:
+    driver: bridge
+
+volumes:
+  cassandra_data:
